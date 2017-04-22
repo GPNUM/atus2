@@ -1,0 +1,52 @@
+<SET_PARAMS>
+
+<DATEI_NAME>3d_0.000_1.bin</DATEI_NAME>
+<DATEI_NAME_2>3d_0.000_2.bin</DATEI_NAME_2>
+
+<!-- First species: val="1", second species: val="2" or both species: val="12" ? -->
+<SPECIES val="12"></SPECIES>
+
+<!-- Gravitational acceleration (in units of g) -->
+<GRAV val="1"></GRAV>
+
+<!-- LASERSYSTEM -->
+<W0 val="0.00005" ></W0>
+<LAMBDA val="0.0000019" ></LAMBDA>
+<P val="0.3" ></P>
+
+<!-- Atomic mass: val=m_Rb , val_2=m_K -->
+<!-- in kg: m_Rb=1.443161930E-25 kg    m_K=6.470080165E-26 kg -->
+<!-- in atomic mass unit (u=1.660538921e-27kg): -->
+<M val="86.90925046977566" val_2="38.96373691201183"></M>
+
+<!-- Resonant wavelength of the first exited state:  -->
+<R val="0.000000780" val_2="0.0000007665"></R>
+
+<!-- BECs (_11: Rb-Rb, _12: Rb-K, _22: K-K)  -->
+<A_A0 val="90.0" val_12="28.0" val_21="28.0" val_2="-33.0"></A_A0>
+
+<!-- Number of particles (_1: Rb, _2, K)  -->
+<N val="330" val_2="330"></N>
+
+<!-- TRAP PARAMETERS (in case of harmonic trap) -->
+<OM val_x="1111.0" val_y="1111.0" val_z="43.9822971"></OM>
+
+<!-- SIMULATION -->
+<NK val="100"></NK><!-- After NK steps an output file is written -->
+<NA val="100"></NA><!-- Output interval  -->
+<MXITER val="400000"></MXITER><!-- No of iterations -->
+<EPS val="0.0001"></EPS><!-- L2-Gradient error -->
+<STEP_SIZE val="0.0001"></STEP_SIZE><!-- Initial stepsize -->
+<FIN_N val="1" val_2="1"></FIN_N>
+
+<!-- Typical evolution time of BEC (depends of trap frequencies) -->
+<T val="0.001" ></T>
+<!-- time increment (see simulation code, DEFAULT: 1E-03)  -->
+<DT val="0.001"></DT>
+<!-- Start/end time of interaction with external potential (in time units given by T)  -->
+<T_ON val="0.0"></T_ON>
+<T_OFF val="10.0"></T_OFF>
+<!-- Typical length scale -->
+<L val="0.000001"></L>
+
+</SET_PARAMS>

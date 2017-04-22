@@ -1,0 +1,17 @@
+
+--style=allman
+
+--convert-tabs
+--indent-preprocessor
+--indent=spaces=2
+--indent-namespaces
+--min-conditional-indent=0
+--pad-header
+
+# write things as 'char *p'
+--align-pointer=name
+--align-reference=name
+
+--max-instatement-indent=60
+--suffix=none
+--quiet
