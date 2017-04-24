@@ -46,8 +46,8 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-  const int no_chunks = 2;
-  const int fak = 1;
+  const int no_chunks = 4;
+  const int fak = 4;
 
   int no_of_threads = 4;
   char* envstr = getenv( "MY_NO_OF_THREADS" );
@@ -71,6 +71,9 @@ int main(int argc, char *argv[])
   }
   assert(dt > 0.0);
   assert(duration > 0.0);
+  printf("duration: %f\n", duration);
+  duration = pow(2.0, ceil(log2(duration/dt)))*dt;
+  printf("new duration: %f\n", duration);
 
   generic_header header = {};
   {
@@ -90,9 +93,9 @@ int main(int argc, char *argv[])
   header.yMax     = header.xMax;
   header.xMin     = 0;
   header.xMax     = duration;
-  header.dy       = header.dx/fak;
+  header.dy       = header.dx*fak;
   header.dky      = 2.0*M_PI/fabs(header.yMax-header.yMin);
-  header.dx       = fabs( header.xMax-header.xMin )/double(header.nDimX)/fak;
+  header.dx       = fabs( header.xMax-header.xMin )/double(header.nDimX);
   header.dkx      = 2.0*M_PI/fabs(header.xMax-header.xMin);
   header.nself_and_data = header.nself + (header.nDimX*header.nDimY*header.nDimZ)*header.nDatatyp;
 

@@ -35,6 +35,7 @@
 
 #include "cft_1d.h"
 #include "rft_1d.h"
+#include "rft_2d.h"
 #include "my_structs.h"
 #include "muParser.h"
 #include "ParameterHandler.h"
@@ -75,7 +76,12 @@ namespace RT_Solver
     vector<double> m_noise;
     vector<double> m_dx_noise;
     vector<double> m_dx2_noise;
-    Fourier::rft_1d *rft_noise;
+    Fourier::rft_1d *sliceft;
+    Fourier::rft_2d *chunkft;
+    Fourier::rft_2d *interpolft;
+    generic_header noise_source_header;
+    generic_header noise_interpol_header;
+    generic_header noise_chunk_header;
 
     double alpha;
 
@@ -108,32 +114,31 @@ namespace RT_Solver
     m_dx_noise.resize(m_no_of_pts);
     m_dx2_noise.resize(m_no_of_pts);
 
-    generic_header header = {};
     if (not no_noise_run) {
       fnoise.open( m_params->Get_simulation("NOISE"), ifstream::binary );
-      fnoise.read( (char*)&header, sizeof(generic_header) );
-      header.nself    = sizeof(generic_header);
-      header.nDatatyp = sizeof(double);
-      header.bComplex = 0;
-      header.nDims    = 1;
-      header.nDimZ    = 1;
-      header.nDimY    = 1;
-      header.nDimX    = m_no_of_pts;
-      header.xMin     = header.yMin;
-      header.xMax     = header.yMax;
-      header.yMin     = 0;
-      header.yMax     = 0;
-      header.zMin     = 0;
-      header.zMax     = 0;
-      header.dx       = header.dy;
-      header.dkx      = header.dky;
-      header.dy       = 1;
-      header.dky      = 1;
-      header.dz       = 1;
-      header.dkz      = 1;
-      header.nself_and_data = header.nself + (header.nDimX*header.nDimY*header.nDimZ)*header.nDatatyp;
+      fnoise.read( (char*)&noise_source_header, sizeof(generic_header) );
+      sliceft = new Fourier::rft_1d(m_header);
+      const int no_of_chunks = 4;
+      const int chunk_size = noise_source_header.nDimX/no_of_chunks;
+      const int noise_expansion = 4;
+      noise_chunk_header = noise_source_header;
+      noise_chunk_header.nDimX = chunk_size;
+      noise_chunk_header.xMax = noise_chunk_header.xMin + chunk_size*noise_chunk_header.dx;
+      noise_chunk_header.dkx = 2.0*M_PI/fabs( noise_chunk_header.xMax-noise_chunk_header.xMin );
+      noise_chunk_header.nself_and_data = noise_chunk_header.nself + (noise_chunk_header.nDimX*noise_chunk_header.nDimY*noise_chunk_header.nDimZ)*noise_chunk_header.nDatatyp;
+      chunkft = new Fourier::rft_2d(noise_chunk_header);
 
-      rft_noise = new Fourier::rft_1d(header);
+      noise_interpol_header = noise_chunk_header;
+      noise_interpol_header.nDimX *= noise_expansion;
+      noise_interpol_header.dx /= noise_expansion;
+      noise_interpol_header.nDimY *= noise_expansion;
+      noise_interpol_header.dy /= noise_expansion;
+      noise_interpol_header.nself_and_data = noise_interpol_header.nself + (noise_interpol_header.nDimX*noise_interpol_header.nDimY*noise_interpol_header.nDimZ)*noise_interpol_header.nDatatyp;
+      printf("header: ndimX %lld dx %g ndimY %lld dy %g\n", m_header.nDimX, m_header.dx, m_header.nDimY,m_header.dy );
+      printf("source: ndimX %lld dx %g ndimY %lld dy %g\n", noise_source_header.nDimX, noise_source_header.dx, noise_source_header.nDimY,noise_source_header.dy );
+        printf("chunk: ndimX %lld dx %g ndimY %lld dy %g\n", noise_chunk_header.nDimX, noise_chunk_header.dx, noise_chunk_header.nDimY,noise_chunk_header.dy );
+        printf("interpol: ndimX %lld dx %g ndimY %lld dy %g\n", noise_interpol_header.nDimX, noise_interpol_header.dx, noise_interpol_header.nDimY,noise_interpol_header.dy );
+      interpolft = new Fourier::rft_2d(noise_interpol_header);
     }
 
     m_max_noise = m_params->Get_Constant("Noise_Amplitude");
@@ -691,29 +696,88 @@ namespace RT_Solver
     last_bool = update_noise;
 
     if ((not no_noise_run) && update_noise) {
-      int data_file_position = (sizeof(generic_header)+static_cast<int>(m_header.t/m_header.dt*sizeof(double)*m_no_of_pts+0.5));
+      // int data_file_position = (sizeof(generic_header)+static_cast<int>(m_header.t/m_header.dt*sizeof(double)*m_no_of_pts+0.5));
 
-      assert(data_file_position == fnoise.tellg());
-      if ( data_file_position != fnoise.tellg() ) {
-        std::cout << "time\t" << m_header.t << "\tfpointer\t" << sizeof(generic_header) << "\t" << data_file_position << "\t" << fnoise.tellg() << std::endl;
-        fnoise.seekg(data_file_position);
+//      assert(data_file_position == fnoise.tellg());
+      // if ( data_file_position != fnoise.tellg() ) {
+      //   std::cout << "time\t" << m_header.t << "\tfpointer\t" << sizeof(generic_header) << "\t" << data_file_position << "\t" << fnoise.tellg() << std::endl;
+      //   fnoise.seekg(data_file_position);
+      // }
+
+      {
+        int no_of_chunks = 4;
+        int chunk_size = noise_source_header.nDimX/no_of_chunks;
+        int noise_expansion = 4;
+        static int i = 0;
+        static int pointer = (noise_expansion*chunk_size);
+
+        double * chunk_in = chunkft->Getp2InReal();
+        double * interpol_in = interpolft->Getp2InReal();
+        fftw_complex * chunk_out = chunkft->Getp2Out();
+        fftw_complex * interpolft_out = interpolft->Getp2Out();
+
+        const int64_t Nx = chunkft->Get_Dim_X();
+        const int64_t Nyred = chunkft->Get_red_Dim();
+        const int64_t shifti = interpolft->Get_Dim_X() - chunkft->Get_Dim_X();
+        const int64_t Nynew = interpolft->Get_red_Dim();
+
+        if (pointer >= (noise_expansion*chunk_size)) {
+          printf("New chunk\n");
+          printf("chunk_size %i i %i\n", chunk_size, i);
+          assert(i < no_of_chunks);
+          i++;
+
+          // Read next chunk
+          fnoise.read( (char*)chunk_in, sizeof(double)*chunkft->Get_Dim_RS());
+          chunkft->save( "chunk_" + std::to_string(i) + ".bin" );
+          chunkft->ft(-1);
+
+          // expand next chunk
+          memset( reinterpret_cast<void*>(interpolft_out), 0, sizeof(fftw_complex)*interpolft->Get_Dim_FS() );
+          #pragma omp parallel for collapse(2)
+          for( int i=0; i<Nx/2; i++ )
+          {
+            for( int j=0; j<Nyred; j++ )
+            {
+              interpolft_out[j+i*Nynew][0] = chunk_out[j+i*Nyred][0];
+              interpolft_out[j+i*Nynew][1] = chunk_out[j+i*Nyred][1];
+            }
+          }
+
+          #pragma omp parallel for collapse(2)
+          for( int i=Nx/2; i<Nx; i++ )
+          {
+            for( int j=0; j<Nyred; j++ )
+            {
+              interpolft_out[j+(i+shifti)*Nynew][0] = chunk_out[j+i*Nyred][0];
+              interpolft_out[j+(i+shifti)*Nynew][1] = chunk_out[j+i*Nyred][1];
+            }
+          }
+          interpolft->save( "fichunk_" + std::to_string(i) + ".bin", false );
+          interpolft->ft(1);
+          interpolft->save( "ichunk_" + std::to_string(i) + ".bin" );
+          pointer = 0;
+        }
+
+        for (int i = 0; i < m_no_of_pts; i++) {
+          m_noise[i] = interpol_in[i+m_no_of_pts*pointer];
+        }
+        pointer++;
       }
-
-      fnoise.read( (char*)m_noise.data(), sizeof(double)*m_no_of_pts );
       // Scale Noise
       for (int i = 0; i < m_no_of_pts; i++) {
         m_noise[i] *= m_max_noise;
       }
 
-      double *diff_noise = rft_noise->Getp2InReal();
+      double *diff_noise = sliceft->Getp2InReal();
       for (int i = 0; i < m_no_of_pts; i++) {
         diff_noise[i] = m_noise[i];
       }
-      rft_noise->Diff_x();
+      sliceft->Diff_x();
       for (int i = 0; i < m_no_of_pts; i++) {
         m_dx_noise[i] = diff_noise[i];
       }
-      rft_noise->Diff_x();
+      sliceft->Diff_x();
       for (int i = 0; i < m_no_of_pts; i++) {
         m_dx2_noise[i] = diff_noise[i];
       }
