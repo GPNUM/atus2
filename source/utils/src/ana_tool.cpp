@@ -61,19 +61,41 @@ int main(int argc, char *argv[])
 
   if (dim == 2)
   {
-    Shared_Ana_Tools<2,Fourier::cft_2d> *tool = new Shared_Ana_Tools<2,Fourier::cft_2d>(&params);
+    if ( argc == 2 )
+    {
+      Shared_Ana_Tools<2,Fourier::cft_2d> *tool = new Shared_Ana_Tools<2,Fourier::cft_2d>(&params);
 
-    tool->Run_Analysis_in_Directory();
-    tool->Write();
-    delete tool;
+      tool->Run_Analysis_in_Directory();
+      tool->Write();
+      delete tool;
+    }
+    if ( argc == 3 )
+    {
+      Shared_Ana_Tools<2,Fourier::cft_2d> *tool = new Shared_Ana_Tools<2,Fourier::cft_2d>(filename,&params);
+      tool->Run_Analysis();
+      tool->Write();
+      delete tool;
+    }
+
   }
 
   if (dim == 3)
   {
-    Shared_Ana_Tools<3,Fourier::cft_3d> *tool = new Shared_Ana_Tools<3,Fourier::cft_3d>(&params);
+    if ( argc == 2 )
+    {
+      Shared_Ana_Tools<3,Fourier::cft_3d> *tool = new Shared_Ana_Tools<3,Fourier::cft_3d>(&params);
 
-    tool->Run_Analysis_in_Directory();
-    tool->Write();
-    delete tool;
+      tool->Run_Analysis_in_Directory();
+      tool->Write();
+      delete tool;
+    }
+    if ( argc == 3 )
+    {
+      Shared_Ana_Tools<3,Fourier::cft_3d> *tool = new Shared_Ana_Tools<3,Fourier::cft_3d>(filename,&params);
+      tool->Run_Analysis();
+      tool->Write();
+      delete tool;
+    }
+
   }
 }
