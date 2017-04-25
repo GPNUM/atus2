@@ -1,14 +1,8 @@
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
-
 # **ATUS-2**
 ## **Introduction**
 The ATUS-2 package is a collection of C++ programs designed to solve the non linear Schrödinger equation, especially the Gross--Pitaevskii equation. ATUS-2 is developed at ZARM (Center of Applied Space Technology and Microgravity, University of Bremen) and is supported by the German Space Agency (DLR) with funds provided by the Federal Ministry of Economics and Technology BMWi) due to an enactment of the German Bundestag under Grant No. DLR 50WM0942, 50WM1042, 50WM1342, 50WM1642.
 
-The main purpose of ATUS-2 is to conduct numerical simulations of atom interferometers with Bose--Einstein condensates (BEC). At the moment the following light-matter interactions are supported for single as well as double species BECs (BEC-mixtures): Bragg, double Bragg and Raman. It solves the Cauchy initial value problem for the Gross--Pitaevskii equation:
-
-$$
-i \hbar \partial_t \vec{\Psi} = \left( -\Delta 1\!\!1 + {\rm V}_{\rm ext} 1\!\!1 + {\rm N}[\vec{\Psi},\vert\vec{\Psi}\vert^2] \right) \vec{\Psi}.
-$$
+The main purpose of ATUS-2 is to conduct numerical simulations of atom interferometers with Bose--Einstein condensates (BEC). At the moment the following light-matter interactions are supported for single as well as double species BECs (BEC-mixtures): Bragg, double Bragg and Raman. It solves the Cauchy initial value problem for the Gross--Pitaevskii equation.
 
 The solvers are based on C++ template classes which are located in the include folder. These are instantiated for up to three spatial dimensions. Based on the form of the non linearity N the wave function can have an arbitrary number of internal degrees of freedom. All available programs are controlled through xml parameter files.
 
