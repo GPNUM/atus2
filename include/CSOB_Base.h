@@ -67,7 +67,6 @@ protected:
   void Project_Sobolev_Gradient();
   void Compute_mu();
   void Compute_res();
-  void Normalize_P_Sobolev_Gradient();
   void Renormalize_All_Psi();
 
   ParameterHandler *m_params;
@@ -83,11 +82,11 @@ protected:
   std::array<fftw_complex *,no_wf> m_Laplace_Psi;
   std::array<fftw_complex *,no_wf> m_Psi_sob;
 
-  void Init();
-
   std::array<double,dim> m_res;
   std::array<double,no_wf *no_wf> m_gs;
   std::array<T *,no_wf> m_fields;
+
+  void Init();
   void Allocate();
 };
 
@@ -105,7 +104,6 @@ CSOB_Base<T,dim,no_wf>::CSOB_Base( ParameterHandler *params )
   m_header.bComplex = 1;
   m_header.nDatatyp = sizeof(fftw_complex);
   m_header.nDims = dim;
-  m_header.t    = 0;
   m_header.dt   = 0.01;
 
   switch ( dim )
@@ -131,7 +129,7 @@ CSOB_Base<T,dim,no_wf>::CSOB_Base( ParameterHandler *params )
     m_header.xMax = params->Get_xMax();
     m_header.xMin = params->Get_xMin();
     m_header.yMax = params->Get_yMax();
-    m_header.yMin = params->Get_yMax();
+    m_header.yMin = params->Get_yMin();
     m_header.dx   = fabs(m_header.xMax-m_header.xMin)/double(m_header.nDimX);
     m_header.dy   = fabs(m_header.yMax-m_header.yMin)/double(m_header.nDimY);
     m_header.dkx  = 2*M_PI/fabs(m_header.xMax-m_header.xMin);
@@ -150,7 +148,7 @@ CSOB_Base<T,dim,no_wf>::CSOB_Base( ParameterHandler *params )
     m_header.xMax = params->Get_xMax();
     m_header.xMin = params->Get_xMin();
     m_header.yMax = params->Get_yMax();
-    m_header.yMin = params->Get_yMax();
+    m_header.yMin = params->Get_yMin();
     m_header.zMax = params->Get_zMax();
     m_header.zMin = params->Get_zMin();
     m_header.dx   = fabs(m_header.xMax-m_header.xMin)/double(m_header.nDimX);
@@ -168,9 +166,6 @@ CSOB_Base<T,dim,no_wf>::CSOB_Base( ParameterHandler *params )
     m_no_of_pts_red = m_header.nDimX*m_header.nDimY*(m_shift_z+1);
     break;
   }
-
-  Allocate();
-  Init();
 
   string tmpstr;
 
@@ -190,8 +185,11 @@ CSOB_Base<T,dim,no_wf>::CSOB_Base( ParameterHandler *params )
   }
   m_header.dt = params->Get_dt();
 
-  m_epsilon = 1e-10;
+  m_epsilon = m_params->Get_Constant( "epsilon" );
   m_stepsize = m_params->Get_Constant( "stepsize" );
+  
+  Allocate();
+  Init();
 }
 
 template <class T, int dim, int no_wf>
@@ -214,13 +212,13 @@ void CSOB_Base<T,dim,no_wf>::Allocate()
 {
   for ( int i=0; i<no_wf; i++ )
   {
-    m_operator_fs[i] = (double *)fftw_malloc( sizeof(double)*m_no_of_pts );
-    m_Laplace_operator_fs[i] = (double *)fftw_malloc( sizeof(double)*m_no_of_pts );
-    m_Potential[i] = (double *)fftw_malloc( sizeof(double)*m_no_of_pts );
+    m_operator_fs[i] = fftw_alloc_real( m_no_of_pts );
+    m_Laplace_operator_fs[i] = fftw_alloc_real( m_no_of_pts );
+    m_Potential[i] = fftw_alloc_real( m_no_of_pts );
 
-    m_Psi[i] = (fftw_complex *)fftw_malloc( sizeof(fftw_complex)*m_no_of_pts );
-    m_Laplace_Psi[i] = (fftw_complex *)fftw_malloc( sizeof(fftw_complex)*m_no_of_pts );
-    m_Psi_sob[i] = (fftw_complex *)fftw_malloc( sizeof(fftw_complex)*m_no_of_pts );
+    m_Psi[i] = fftw_alloc_complex( m_no_of_pts );
+    m_Laplace_Psi[i] = fftw_alloc_complex( m_no_of_pts );
+    m_Psi_sob[i] = fftw_alloc_complex( m_no_of_pts );
 
     m_fields[i] = new T(m_header);
     m_fields[i]->SetFix(false);
@@ -242,9 +240,9 @@ void CSOB_Base<T,dim,no_wf>::Init()
     {
       k = m_fields[0]->Get_k(i);
       phi = k.scale(m_alpha[j])*k;
-      //phi = k*k;
       op[i] = 1.0/(1.0+phi);
       op2[i] = -phi;
+      
     }
   }
 }
@@ -252,20 +250,13 @@ void CSOB_Base<T,dim,no_wf>::Init()
 template <class T, int dim, int no_wf>
 void CSOB_Base<T,dim,no_wf>::Compute_Laplace()
 {
-  fftw_complex *in = nullptr;
-  fftw_complex *out = nullptr;
-  fftw_complex *Psi = nullptr;
-  fftw_complex *Laplace_Psi = nullptr;
-  double *op = nullptr;
-
-  // compute Laplace
   for ( int i=0; i<no_wf; i++ )
   {
-    Psi = m_Psi[i];
-    Laplace_Psi = m_Laplace_Psi[i];
-    in = m_fields[i]->Getp2In();
-    out = m_fields[i]->Getp2Out();
-    op =  m_Laplace_operator_fs[i];
+    fftw_complex * Psi = m_Psi[i];
+    fftw_complex * Laplace_Psi = m_Laplace_Psi[i];
+    fftw_complex * in = m_fields[i]->Getp2In();
+    fftw_complex * out = m_fields[i]->Getp2Out();
+    double * op =  m_Laplace_operator_fs[i];
 
     memcpy( (void *)(in), (void *)(Psi), m_no_of_pts*sizeof(fftw_complex) );
     m_fields[i]->ft(-1);
@@ -285,20 +276,14 @@ void CSOB_Base<T,dim,no_wf>::Compute_Laplace()
 template <class T, int dim, int no_wf>
 void CSOB_Base<T,dim,no_wf>::Compute_Sobolev_Psi()
 {
-  fftw_complex *in = nullptr;
-  fftw_complex *out = nullptr;
-  fftw_complex *Psi = nullptr;
-  fftw_complex *Psi_sob = nullptr;
-  double *op = nullptr;
-
   // solves (1-Laplace) Psi_sob = Psi
   for ( int i=0; i<no_wf; i++ )
   {
-    Psi = m_Psi[i];
-    Psi_sob = m_Psi_sob[i];
-    in = m_fields[i]->Getp2In();
-    out = m_fields[i]->Getp2Out();
-    op = m_operator_fs[i];
+    fftw_complex * Psi = m_Psi[i];
+    fftw_complex * Psi_sob = m_Psi_sob[i];
+    fftw_complex * in = m_fields[i]->Getp2In();
+    fftw_complex * out = m_fields[i]->Getp2Out();
+    double * op = m_operator_fs[i];
 
     memcpy( (void *)(in), (void *)(Psi), m_no_of_pts*sizeof(fftw_complex) );
     m_fields[i]->ft(-1);
@@ -318,30 +303,21 @@ void CSOB_Base<T,dim,no_wf>::Compute_Sobolev_Psi()
 template <class T, int dim, int no_wf>
 void CSOB_Base<T,dim,no_wf>::Compute_Sobolev_Gradient()
 {
-  fftw_complex *in = nullptr;
-  fftw_complex *out = nullptr;
-  fftw_complex *Psi = nullptr;
-  fftw_complex *Laplace_Psi = nullptr;
-  double *op = nullptr;
-  double *pot = nullptr;
-
-  double NLpot;
-
   // solves (1-Laplace) Sobolev_Gradient = L2_Gradient
   for ( int i=0; i<no_wf; i++ )
   {
     // assemble the L2 gradient
-    Psi = m_Psi[i];
-    Laplace_Psi = m_Laplace_Psi[i];
-    in = m_fields[i]->Getp2In();
-    out = m_fields[i]->Getp2Out();
-    op =  m_operator_fs[i];
-    pot = m_Potential[i];
+    fftw_complex * Psi = m_Psi[i];
+    fftw_complex * Laplace_Psi = m_Laplace_Psi[i];
+    fftw_complex * in = m_fields[i]->Getp2In();
+    fftw_complex * out = m_fields[i]->Getp2Out();
+    double * op =  m_operator_fs[i];
+    double * pot = m_Potential[i];
 
     #pragma omp parallel for
     for ( int l=0; l<m_no_of_pts; l++ )
     {
-      NLpot=0;
+      double NLpot=0;
       for ( int j=0; j<no_wf; j++ )
         NLpot += m_gs[j+i*no_wf]*(m_Psi[j][l][0]*m_Psi[j][l][0] + m_Psi[j][l][1]*m_Psi[j][l][1]);
 
@@ -363,49 +339,29 @@ void CSOB_Base<T,dim,no_wf>::Compute_Sobolev_Gradient()
 template <class T, int dim, int no_wf>
 void CSOB_Base<T,dim,no_wf>::Project_Sobolev_Gradient()
 {
-  fftw_complex *Psi_sob = nullptr;
-  fftw_complex *Psi = nullptr;
-  fftw_complex *Sob_grad = nullptr;
-
   for ( int i=0; i<no_wf; i++ )
   {
-    Sob_grad = m_fields[i]->Getp2In();
-    Psi = m_Psi[i];
-    Psi_sob = m_Psi_sob[i];
+    fftw_complex * Sob_grad = m_fields[i]->Getp2In();
+    fftw_complex * Psi = m_Psi[i];
+    fftw_complex * Psi_sob = m_Psi_sob[i];
 
-    double help[] = {0,0};
+    double tmp1=0;
+    double tmp2=0;
 
-    #pragma omp parallel for
+    #pragma omp parallel for reduction(+:tmp1,tmp2)
     for ( int l=0; l<m_no_of_pts; l++ )
     {
-      help[0] += (Psi[l][0]*Sob_grad[l][0] + Psi[l][1]*Sob_grad[l][1]);
-      help[1] += (Psi[l][0]*Psi_sob[l][0] + Psi[l][1]*Psi_sob[l][1]);
+      tmp1 += (Psi[l][0]*Sob_grad[l][0] + Psi[l][1]*Sob_grad[l][1]);
+      tmp2 += (Psi[l][0]*Psi_sob[l][0] + Psi[l][1]*Psi_sob[l][1]);
     }
 
-    double fak = help[0]/help[1];
+    double fak = tmp1/tmp2;
 
     #pragma omp parallel for
     for ( int l=0; l<m_no_of_pts; l++ )
     {
       Sob_grad[l][0] -= fak*Psi_sob[l][0];
       Sob_grad[l][1] -= fak*Psi_sob[l][1];
-    }
-  }
-}
-
-template <class T, int dim, int no_wf>
-void CSOB_Base<T,dim,no_wf>::Normalize_P_Sobolev_Gradient()
-{
-  for ( int i=0; i<no_wf; i++ )
-  {
-    fftw_complex *Sob_grad = m_fields[i]->Getp2In();
-    double fak = 1.0/sqrt(m_res[i]);
-
-    #pragma omp parallel for
-    for ( int l=0; l<m_no_of_pts; l++ )
-    {
-      Sob_grad[l][0] *= fak;
-      Sob_grad[l][1] *= fak;
     }
   }
 }
@@ -445,17 +401,13 @@ void CSOB_Base<T,dim,no_wf>::Compute_mu()
 {
   Compute_Laplace();
 
-  fftw_complex *Psi = nullptr;
-  fftw_complex *Laplace_Psi = nullptr;
-  double *pot = nullptr;
-
   for ( int i=0; i<no_wf; i++ )
   {
     double mu=0;
 
-    Psi = m_Psi[i];
-    Laplace_Psi = m_Laplace_Psi[i];
-    pot = m_Potential[i];
+    fftw_complex * Psi = m_Psi[i];
+    fftw_complex * Laplace_Psi = m_Laplace_Psi[i];
+    double * pot = m_Potential[i];
 
     #pragma omp parallel for reduction(+:mu)
     for ( int l=0; l<m_no_of_pts; l++ )
@@ -481,35 +433,35 @@ void CSOB_Base<T,dim,no_wf>::run()
   {
     Compute_Sobolev_Psi();
 
-    // for( int i=0; i<no_wf; i++ )
-    // {
-    //   string filename = "sob_psi_" + to_string(i)+ "_" + to_string(counter) + ".bin";
-    //   Save( m_Psi_sob[i], filename );
-    // }
+//     for( int i=0; i<no_wf; i++ )
+//     {
+//       string filename = "sob_psi_" + to_string(i)+ "_" + to_string(counter) + ".bin";
+//       Save( m_Psi_sob[i], filename );
+//     }
 
     Compute_Laplace();
 
-    // for( int i=0; i<no_wf; i++ )
-    // {
-    //   string filename = "lap_psi_" + to_string(i) + "_" + to_string(counter) + ".bin";
-    //   Save( m_Laplace_Psi[i], filename );
-    // }
+//     for( int i=0; i<no_wf; i++ )
+//     {
+//        string filename = "lap_psi_" + to_string(i) + "_" + to_string(counter) + ".bin";
+//        Save( m_Laplace_Psi[i], filename );
+//     }
 
     Compute_Sobolev_Gradient();
 
-    // for( int i=0; i<no_wf; i++ )
-    // {
-    //   string filename = "sob_grad_" + to_string(i) + "_" + to_string(counter) + ".bin";
-    //   Save(  m_fields[i]->Getp2In(), filename );
-    // }
+//     for( int i=0; i<no_wf; i++ )
+//     {
+//        string filename = "sob_grad_" + to_string(i) + "_" + to_string(counter) + ".bin";
+//        Save(  m_fields[i]->Getp2In(), filename );
+//     }
 
     Project_Sobolev_Gradient();
 
-    // for( int i=0; i<no_wf; i++ )
-    // {
-    //   string filename = "Psob_grad_" + to_string(i) + "_" + to_string(counter) + ".bin";
-    //   Save( m_fields[i]->Getp2In(), filename );
-    // }
+//     for( int i=0; i<no_wf; i++ )
+//     {
+//        string filename = "Psob_grad_" + to_string(i) + "_" + to_string(counter) + ".bin";
+//        Save( m_fields[i]->Getp2In(), filename );
+//     }
 
     Compute_res();
 
@@ -526,8 +478,6 @@ void CSOB_Base<T,dim,no_wf>::run()
     if ( brenorm )
       Renormalize_All_Psi();
 
-    //Normalize_P_Sobolev_Gradient();
-
     for ( int i=0; i<no_wf; i++ )
     {
       fftw_complex *sobgrad = m_fields[i]->Getp2In();
@@ -541,11 +491,11 @@ void CSOB_Base<T,dim,no_wf>::run()
       }
     }
 
-    // for( int i=0; i<no_wf; i++ )
-    // {
-    //   string filename = "psi_" + to_string(i) + "_" + to_string(counter) + ".bin";
-    //   Save( m_Psi[i], filename );
-    // }
+//     for( int i=0; i<no_wf; i++ )
+//     {
+//       string filename = "psi_" + to_string(i) + "_" + to_string(counter) + ".bin";
+//       Save( m_Psi[i], filename );
+//     }
 
     cout << "--- " << counter << endl;
     cout << "res " << m_res_tot << endl;
@@ -611,6 +561,8 @@ void CSOB_Base<T,dim,no_wf>::Save( double *data, std::string filename )
 template <class T, int dim, int no_wf>
 void CSOB_Base<T,dim,no_wf>::Save( fftw_complex *data, std::string filename )
 {
+  std::cout << filename << std::endl;
+
   char *header = reinterpret_cast<char *>(&m_header);
   char *Psi = reinterpret_cast<char *>(data);
 

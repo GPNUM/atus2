@@ -21,11 +21,6 @@
 // along with ATUS2.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-/**
- @author Želimir Marojević
- @brief realtime propagation
-*/
-
 #include <cstdio>
 #include <cmath>
 #include "cft_2d_MPI.h"

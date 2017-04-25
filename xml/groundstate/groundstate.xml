@@ -1,0 +1,30 @@
+<SIMULATION>
+  <DIM>2</DIM>
+  <FILENAME>final.bin</FILENAME>
+  <GUESS_1D>exp( -0.5*(x/sigma_x)^2 )</GUESS_1D>
+  <GUESS_2D>exp( -0.5*( (x/sigma_x)^2 + (y/sigma_y)^2 ) )</GUESS_2D>
+  <GUESS_3D>exp( -0.5*( (x/sigma_x)^2 + (y/sigma_y)^2 + (z/sigma_z)^2 ) )</GUESS_3D>
+  <POTENTIAL_1D>0.5*x^2</POTENTIAL_1D>
+  <POTENTIAL_2D>0.5*x^2+0.5*y^2</POTENTIAL_2D>
+  <POTENTIAL_3D>0.5*x^2+0.5*y^2+0.5*z^2</POTENTIAL_3D>
+  <CONSTANTS>
+    <sigma_x>1</sigma_x>
+    <sigma_y>1</sigma_y>
+    <sigma_z>1</sigma_z>
+    <epsilon>1e-5</epsilon>
+    <stepsize>0.001</stepsize>
+  </CONSTANTS>
+  <VCONSTANTS>
+    <Alpha_1>1,1,1,1</Alpha_1>
+    <GS_1>1,1,1,1</GS_1>
+    <N>1,1,1,1</N>
+  </VCONSTANTS>
+  <ALGORITHM>
+    <NX>256</NX>
+    <NY>256</NY>
+    <NZ>256</NZ>
+    <XMIN>-5</XMIN><XMAX>5</XMAX>
+    <YMIN>-5</YMIN><YMAX>5</YMAX> 
+    <ZMIN>-5</ZMIN><ZMAX>5</ZMAX>
+  </ALGORITHM>
+</SIMULATION>

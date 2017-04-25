@@ -20,7 +20,6 @@
  * along with ATUS2.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 /*
  * arXiv:0906.3206v1 [quant-ph] 17 Jun 2009
  */
@@ -63,7 +62,6 @@ protected:
   void Project_Sobolev_Gradient();
   void Compute_mu();
   void Compute_res();
-  void Normalize_P_Sobolev_Gradient();
   void Renormalize_All_Psi();
 
   ParameterHandler *m_params;
@@ -79,11 +77,11 @@ protected:
   std::array<fftw_complex *,no_wf> m_Laplace_Psi;
   std::array<fftw_complex *,no_wf> m_Psi_sob;
 
-  void Init();
-
   std::array<double,dim> m_res;
   std::array<double,no_wf *no_wf> m_gs;
   std::array<T *,no_wf> m_fields;
+
+  void Init();
   void Allocate();
 };
 
@@ -110,7 +108,7 @@ CSOB_Base_MPI<T,dim,no_wf>::CSOB_Base_MPI( ParameterHandler *params )
     m_header.xMax = params->Get_xMax();
     m_header.xMin = params->Get_xMin();
     m_header.yMax = params->Get_yMax();
-    m_header.yMin = params->Get_yMax();
+    m_header.yMin = params->Get_yMin();
     m_header.dx   = fabs(m_header.xMax-m_header.xMin)/double(m_header.nDimX);
     m_header.dy   = fabs(m_header.yMax-m_header.yMin)/double(m_header.nDimY);
     m_header.dkx  = 2*M_PI/fabs(m_header.xMax-m_header.xMin);
@@ -130,7 +128,7 @@ CSOB_Base_MPI<T,dim,no_wf>::CSOB_Base_MPI( ParameterHandler *params )
     m_header.xMax = params->Get_xMax();
     m_header.xMin = params->Get_xMin();
     m_header.yMax = params->Get_yMax();
-    m_header.yMin = params->Get_yMax();
+    m_header.yMin = params->Get_yMin();
     m_header.zMax = params->Get_zMax();
     m_header.zMin = params->Get_zMin();
     m_header.dx   = fabs(m_header.xMax-m_header.xMin)/double(m_header.nDimX);
@@ -150,9 +148,6 @@ CSOB_Base_MPI<T,dim,no_wf>::CSOB_Base_MPI( ParameterHandler *params )
     break;
   }
 
-  Allocate();
-  Init();
-
   string tmpstr;
 
   for ( int i=0; i<no_wf; i++ )
@@ -171,8 +166,11 @@ CSOB_Base_MPI<T,dim,no_wf>::CSOB_Base_MPI( ParameterHandler *params )
   }
   m_header.dt = params->Get_dt();
 
-  m_epsilon = 1e-10;
+  m_epsilon = m_params->Get_Constant( "epsilon" );
   m_stepsize = m_params->Get_Constant( "stepsize" );
+  
+  Allocate();
+  Init();  
 }
 
 template <class T, int dim, int no_wf>
@@ -195,13 +193,13 @@ void CSOB_Base_MPI<T,dim,no_wf>::Allocate()
 {
   for ( int i=0; i<no_wf; i++ )
   {
-    m_operator_fs[i] = (double *)fftw_malloc( sizeof(double)*m_alloc );
-    m_Laplace_operator_fs[i] = (double *)fftw_malloc( sizeof(double)*m_alloc );
-    m_Potential[i] = (double *)fftw_malloc( sizeof(double)*m_alloc );
+    m_operator_fs[i] = fftw_alloc_real( m_alloc );
+    m_Laplace_operator_fs[i] = fftw_alloc_real( m_alloc );
+    m_Potential[i] = fftw_alloc_real( m_alloc );
 
-    m_Psi[i] = (fftw_complex *)fftw_malloc( sizeof(fftw_complex)*m_alloc );
-    m_Laplace_Psi[i] = (fftw_complex *)fftw_malloc( sizeof(fftw_complex)*m_alloc );
-    m_Psi_sob[i] = (fftw_complex *)fftw_malloc( sizeof(fftw_complex)*m_alloc );
+    m_Psi[i] = fftw_alloc_complex( m_alloc );
+    m_Laplace_Psi[i] = fftw_alloc_complex( m_alloc );
+    m_Psi_sob[i] = fftw_alloc_complex( m_alloc );
 
     m_fields[i] = new T(&m_header);
   }
@@ -231,20 +229,14 @@ void CSOB_Base_MPI<T,dim,no_wf>::Init()
 template <class T, int dim, int no_wf>
 void CSOB_Base_MPI<T,dim,no_wf>::Compute_Laplace()
 {
-  fftw_complex *in = nullptr;
-  fftw_complex *out = nullptr;
-  fftw_complex *Psi = nullptr;
-  fftw_complex *Laplace_Psi = nullptr;
-  double *op = nullptr;
-
   // compute Laplace
   for ( int i=0; i<no_wf; i++ )
   {
-    Psi = m_Psi[i];
-    Laplace_Psi = m_Laplace_Psi[i];
-    in = m_fields[i]->Get_p2_Data();
-    out = m_fields[i]->Get_p2_Data();
-    op =  m_Laplace_operator_fs[i];
+    fftw_complex * Psi = m_Psi[i];
+    fftw_complex * Laplace_Psi = m_Laplace_Psi[i];
+    fftw_complex * in = m_fields[i]->Get_p2_Data();
+    fftw_complex * out = m_fields[i]->Get_p2_Data();
+    double * op =  m_Laplace_operator_fs[i];
 
     memcpy( (void *)(in), (void *)(Psi), m_no_of_pts*sizeof(fftw_complex) );
     m_fields[i]->ft(-1);
@@ -263,20 +255,14 @@ void CSOB_Base_MPI<T,dim,no_wf>::Compute_Laplace()
 template <class T, int dim, int no_wf>
 void CSOB_Base_MPI<T,dim,no_wf>::Compute_Sobolev_Psi()
 {
-  fftw_complex *in = nullptr;
-  fftw_complex *out = nullptr;
-  fftw_complex *Psi = nullptr;
-  fftw_complex *Psi_sob = nullptr;
-  double *op = nullptr;
-
   // solves (1-Laplace) Psi_sob = Psi
   for ( int i=0; i<no_wf; i++ )
   {
-    Psi = m_Psi[i];
-    Psi_sob = m_Psi_sob[i];
-    in = m_fields[i]->Get_p2_Data();
-    out = m_fields[i]->Get_p2_Data();
-    op = m_operator_fs[i];
+    fftw_complex * Psi = m_Psi[i];
+    fftw_complex * Psi_sob = m_Psi_sob[i];
+    fftw_complex * in = m_fields[i]->Get_p2_Data();
+    fftw_complex * out = m_fields[i]->Get_p2_Data();
+    double * op = m_operator_fs[i];
 
     memcpy( (void *)(in), (void *)(Psi), m_no_of_pts*sizeof(fftw_complex) );
     m_fields[i]->ft(-1);
@@ -295,29 +281,20 @@ void CSOB_Base_MPI<T,dim,no_wf>::Compute_Sobolev_Psi()
 template <class T, int dim, int no_wf>
 void CSOB_Base_MPI<T,dim,no_wf>::Compute_Sobolev_Gradient()
 {
-  fftw_complex *in = nullptr;
-  fftw_complex *out = nullptr;
-  fftw_complex *Psi = nullptr;
-  fftw_complex *Laplace_Psi = nullptr;
-  double *op = nullptr;
-  double *pot = nullptr;
-
-  double NLpot;
-
   // solves (1-Laplace) Sobolev_Gradient = L2_Gradient
   for ( int i=0; i<no_wf; i++ )
   {
     // assemble the L2 gradient
-    Psi = m_Psi[i];
-    Laplace_Psi = m_Laplace_Psi[i];
-    in = m_fields[i]->Get_p2_Data();
-    out = m_fields[i]->Get_p2_Data();
-    op =  m_operator_fs[i];
-    pot = m_Potential[i];
+    fftw_complex * Psi = m_Psi[i];
+    fftw_complex * Laplace_Psi = m_Laplace_Psi[i];
+    fftw_complex * in = m_fields[i]->Get_p2_Data();
+    fftw_complex * out = m_fields[i]->Get_p2_Data();
+    double * op =  m_operator_fs[i];
+    double * pot = m_Potential[i];
 
     for ( ptrdiff_t l=0; l<m_no_of_pts; l++ )
     {
-      NLpot=0;
+      double NLpot=0;
       for ( int j=0; j<no_wf; j++ )
         NLpot += m_gs[j+i*no_wf]*(m_Psi[j][l][0]*m_Psi[j][l][0] + m_Psi[j][l][1]*m_Psi[j][l][1]);
 
@@ -339,46 +316,29 @@ void CSOB_Base_MPI<T,dim,no_wf>::Compute_Sobolev_Gradient()
 template <class T, int dim, int no_wf>
 void CSOB_Base_MPI<T,dim,no_wf>::Project_Sobolev_Gradient()
 {
-  fftw_complex *Psi_sob = nullptr;
-  fftw_complex *Psi = nullptr;
-  fftw_complex *Sob_grad = nullptr;
-
   for ( int i=0; i<no_wf; i++ )
   {
-    Sob_grad = m_fields[i]->Get_p2_Data();
-    Psi = m_Psi[i];
-    Psi_sob = m_Psi_sob[i];
+    fftw_complex * Sob_grad = m_fields[i]->Get_p2_Data();
+    fftw_complex * Psi = m_Psi[i];
+    fftw_complex * Psi_sob = m_Psi_sob[i];
 
-    double help[] = {0,0};
+    double loc_tmp[] = {0,0};
+    double red_tmp[] = {0,0};
 
     for ( ptrdiff_t l=0; l<m_no_of_pts; l++ )
     {
-      help[0] += (Psi[l][0]*Sob_grad[l][0] + Psi[l][1]*Sob_grad[l][1]);
-      help[1] += (Psi[l][0]*Psi_sob[l][0] + Psi[l][1]*Psi_sob[l][1]);
+      loc_tmp[0] += (Psi[l][0]*Sob_grad[l][0] + Psi[l][1]*Sob_grad[l][1]);
+      loc_tmp[1] += (Psi[l][0]*Psi_sob[l][0] + Psi[l][1]*Psi_sob[l][1]);
     }
 
-    double fak = help[0]/help[1];
+    MPI_Allreduce(loc_tmp,red_tmp,2,MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      
+    double fak = red_tmp[0]/red_tmp[1];
 
     for ( ptrdiff_t l=0; l<m_no_of_pts; l++ )
     {
       Sob_grad[l][0] -= fak*Psi_sob[l][0];
       Sob_grad[l][1] -= fak*Psi_sob[l][1];
-    }
-  }
-}
-
-template <class T, int dim, int no_wf>
-void CSOB_Base_MPI<T,dim,no_wf>::Normalize_P_Sobolev_Gradient()
-{
-  for ( int i=0; i<no_wf; i++ )
-  {
-    fftw_complex *Sob_grad = m_fields[i]->Get_p2_Data();
-    double fak = 1.0/sqrt(m_res[i]);
-
-    for ( ptrdiff_t l=0; l<m_no_of_pts; l++ )
-    {
-      Sob_grad[l][0] *= fak;
-      Sob_grad[l][1] *= fak;
     }
   }
 }
@@ -418,17 +378,14 @@ void CSOB_Base_MPI<T,dim,no_wf>::Compute_mu()
 {
   Compute_Laplace();
 
-  fftw_complex *Psi = nullptr;
-  fftw_complex *Laplace_Psi = nullptr;
-  double *pot = nullptr;
-
   for ( int i=0; i<no_wf; i++ )
   {
-    double mu=0;
+    double loc_mu=0;
+    double red_mu=0;
 
-    Psi = m_Psi[i];
-    Laplace_Psi = m_Laplace_Psi[i];
-    pot = m_Potential[i];
+    fftw_complex * Psi = m_Psi[i];
+    fftw_complex * Laplace_Psi = m_Laplace_Psi[i];
+    double * pot = m_Potential[i];
 
     for ( ptrdiff_t l=0; l<m_no_of_pts; l++ )
     {
@@ -436,10 +393,12 @@ void CSOB_Base_MPI<T,dim,no_wf>::Compute_mu()
       for ( int j=0; j<no_wf; j++ )
         NLpot += m_gs[j+i*no_wf]*(m_Psi[j][l][0]*m_Psi[j][l][0] + m_Psi[j][l][1]*m_Psi[j][l][1]);
 
-      mu += -(Psi[l][0]*Laplace_Psi[l][0]+Psi[l][1]*Laplace_Psi[l][1]) + (pot[l]+NLpot)*(Psi[l][0]*Psi[l][0]+Psi[l][1]*Psi[l][1]);
+      loc_mu += -(Psi[l][0]*Laplace_Psi[l][0]+Psi[l][1]*Laplace_Psi[l][1]) + (pot[l]+NLpot)*(Psi[l][0]*Psi[l][0]+Psi[l][1]*Psi[l][1]);
     }
 
-    m_mu[i] = m_fields[i]->Get_Ar()*mu;
+    MPI_Allreduce(&loc_mu,&red_mu,1,MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    
+    m_mu[i] = m_fields[i]->Get_Ar()*red_mu;
   }
 }
 
@@ -472,8 +431,8 @@ void CSOB_Base_MPI<T,dim,no_wf>::run()
 
     for ( int i=0; i<no_wf; i++ )
     {
-      fftw_complex *sobgrad = m_fields[i]->Get_p2_Data();
-      fftw_complex *Psi = m_Psi[i];
+      fftw_complex * sobgrad = m_fields[i]->Get_p2_Data();
+      fftw_complex * Psi = m_Psi[i];
 
       #pragma omp parallel for
       for ( ptrdiff_t l=0; l<m_no_of_pts; l++ )

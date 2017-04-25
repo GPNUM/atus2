@@ -1,28 +1,38 @@
 <SIMULATION>
+  <!-- This example makes no sense in spatial dimensions lower than 2 -->
   <DIM>2</DIM>
   <FILENAME>0.0000_1.bin</FILENAME>
+  <!-- intial wave function -->
   <GUESS_2D>exp( -0.5*( ((x-x0)/sigma_x)^2 + ((y-y0)/sigma_y)^2 ) )</GUESS_2D>
-  <POTENTIAL_2D>(rect(x,-10,9)+rect(x,-9.5,0.5)+rect(x,1,10))*rect(y,-0.1,0.1)</POTENTIAL_2D>
+  <!-- double slit potential -->
+  <POTENTIAL_2D>H * ( rect(x,-10,-1) + rect(x,-0.5,0.5) + rect(x,1,10) )*rect(y,-0.25,0.25)</POTENTIAL_2D>
+  <!--POTENTIAL_2D>H * ( rect(x,-10,-1) + rect(x,-0.5,0.5) + rect(x,1,10) )*rect(y,-0.1,0.1)</POTENTIAL_2D -->
+  <!-- POTENTIAL_2D>H * ( rect(x,-10,-0.5) + rect(x,-0.25,0.25) + rect(x,0.5,10) )*rect(y,-0.1,0.1)</POTENTIAL_2D -->
   <CONSTANTS>
+    <!-- Heigth of the double slit potetnial -->
+    <H>50</H>
+    <!-- desired particle number of the wavefunction -->
     <N>1</N>
     <sigma_x>1</sigma_x>
     <sigma_y>1</sigma_y>
     <stepsize>0.0001</stepsize>
     <x0>0</x0>
-    <y0>-5</y0>
+    <y0>-10</y0>
   </CONSTANTS>
   <ALGORITHM>
     <NX>1024</NX>
     <NY>1024</NY>
-    <XMIN>-10</XMIN><XMAX>10</XMAX>
-    <YMIN>-10</YMIN><YMAX>10</YMAX> 
+    <XMIN>-20</XMIN><XMAX>20</XMAX>
+    <YMIN>-20</YMIN><YMAX>20</YMAX> 
   </ALGORITHM>
   <VCONSTANTS>
+    <!-- factor in front of the Laplace operator -->
     <Alpha_1>1,1,1</Alpha_1>
+    <!-- interaction strength -->
     <GS_1>0</GS_1> 
   </VCONSTANTS>  
   <SEQUENCE>
-    <set_momentum comp="0">0,1,0</set_momentum>
-    <freeprop dt="0.1" Nk="10" output_freq="each" pn_freq="last">10</freeprop>
+    <set_momentum comp="0">0,5,0</set_momentum>
+    <freeprop dt="0.01" Nk="10" output_freq="each" pn_freq="last">2</freeprop>
   </SEQUENCE>  
 </SIMULATION>
