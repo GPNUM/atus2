@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-  const int no_chunks = 4;
+  const int no_chunks = 16;
   const int fak = 4;
 
   int no_of_threads = 4;
@@ -69,11 +69,15 @@ int main(int argc, char *argv[])
       duration += seq_item.duration.front();
     }
   }
+  printf("duration: %f\n", duration);
+  printf("dt: %f\n", dt);
   assert(dt > 0.0);
   assert(duration > 0.0);
-  printf("duration: %f\n", duration);
+  int exp =ceil(log2(duration/dt));
+  printf("exp %i\n", exp);
   duration = pow(2.0, ceil(log2(duration/dt)))*dt;
   printf("new duration: %f\n", duration);
+  printf("lower duration: %f\n", pow(2.0, exp-1)*dt);
 
   generic_header header = {};
   {
@@ -110,9 +114,13 @@ int main(int argc, char *argv[])
   printf( "dy  == %g\n", header.dy );
   printf( "dky == %g\n", header.dky );
 
+  double runtime_size = (header.nDimX*header.nDimY*sizeof(double)+header.nDimX*(header.nDimY/2 + 1)*sizeof(fftw_complex))/pow(1024,3);
+  double end_size = header.nDimX*header.nDimY*sizeof(double)/pow(1024,3);
+  printf("Memory: Runtime %f GB, End %f GB\n", runtime_size, end_size);
+
   Fourier::CNoise<Fourier::rft_2d,2> noise( header );
   noise.color_noise_custom(2,chunk_dkx);
-  noise.save("noise.bin");
+  noise.save("Noise.bin");
 
   fftw_cleanup_threads();
   return EXIT_SUCCESS;
