@@ -121,6 +121,7 @@ namespace RT_Solver
       const int no_of_chunks = 4;
       const int chunk_size = noise_source_header.nDimX/no_of_chunks;
       const int noise_expansion = 4;
+      printf("chunk_size %i\n",chunk_size);
       noise_chunk_header = noise_source_header;
       noise_chunk_header.nDimX = chunk_size;
       noise_chunk_header.xMax = noise_chunk_header.xMin + chunk_size*noise_chunk_header.dx;
@@ -136,8 +137,8 @@ namespace RT_Solver
       noise_interpol_header.nself_and_data = noise_interpol_header.nself + (noise_interpol_header.nDimX*noise_interpol_header.nDimY*noise_interpol_header.nDimZ)*noise_interpol_header.nDatatyp;
       printf("header: ndimX %lld dx %g ndimY %lld dy %g\n", m_header.nDimX, m_header.dx, m_header.nDimY,m_header.dy );
       printf("source: ndimX %lld dx %g ndimY %lld dy %g\n", noise_source_header.nDimX, noise_source_header.dx, noise_source_header.nDimY,noise_source_header.dy );
-        printf("chunk: ndimX %lld dx %g ndimY %lld dy %g\n", noise_chunk_header.nDimX, noise_chunk_header.dx, noise_chunk_header.nDimY,noise_chunk_header.dy );
-        printf("interpol: ndimX %lld dx %g ndimY %lld dy %g\n", noise_interpol_header.nDimX, noise_interpol_header.dx, noise_interpol_header.nDimY,noise_interpol_header.dy );
+      printf("chunk: ndimX %lld dx %g ndimY %lld dy %g\n", noise_chunk_header.nDimX, noise_chunk_header.dx, noise_chunk_header.nDimY,noise_chunk_header.dy );
+      printf("interpol: ndimX %lld dx %g ndimY %lld dy %g\n", noise_interpol_header.nDimX, noise_interpol_header.dx, noise_interpol_header.nDimY,noise_interpol_header.dy );
       interpolft = new Fourier::rft_2d(noise_interpol_header);
     }
 
@@ -263,20 +264,20 @@ namespace RT_Solver
     lis_matrix_set_size(*A, 0, 2*N);
 
 
-      lis_matrix_set_value(LIS_INS_VALUE, 2*0, (2*0)-3+(2*N), -alpha/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*0, (2*0)-1+(2*N), 16*alpha/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*0+1, (2*0+1)-5+(2*N), -beta/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*0+1, (2*0+1)-3+(2*N), 16*beta/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*0, (2*0)-3+(2*N), -alpha/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*0, (2*0)-1+(2*N), 16*alpha/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*0+1, (2*0+1)-5+(2*N), -beta/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*0+1, (2*0+1)-3+(2*N), 16*beta/(12.0*pow(dx,2)),*A);
 
-      lis_matrix_set_value(LIS_INS_VALUE, 2*1, (2*1)-3+(2*N), -alpha/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*1+1, (2*1+1)-5+(2*N), -beta/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2), (2*(N-2))+5-(2*N), -alpha/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2)+1, (2*(N-2)+1)+3-(2*N), -beta/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*1, (2*1)-3+(2*N), -alpha/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*1+1, (2*1+1)-5+(2*N), -beta/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2), (2*(N-2))+5-(2*N), -alpha/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2)+1, (2*(N-2)+1)+3-(2*N), -beta/(12.0*pow(dx,2)),*A);
 
-      lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1), (2*(N-1))+3-(2*N), 16*alpha/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1), (2*(N-1))+5-(2*N), -alpha/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1)+1, (2*(N-1)+1)+1-(2*N), 16*beta/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1)+1, (2*(N-1)+1)+3-(2*N), -beta/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1), (2*(N-1))+3-(2*N), 16*alpha/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1), (2*(N-1))+5-(2*N), -alpha/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1)+1, (2*(N-1)+1)+1-(2*N), 16*beta/(12.0*pow(dx,2)),*A);
+    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1)+1, (2*(N-1)+1)+3-(2*N), -beta/(12.0*pow(dx,2)),*A);
 
     // real
     lis_matrix_set_value(LIS_INS_VALUE, 0, 0, diag,*A);
@@ -696,20 +697,15 @@ namespace RT_Solver
     last_bool = update_noise;
 
     if ((not no_noise_run) && update_noise) {
-      // int data_file_position = (sizeof(generic_header)+static_cast<int>(m_header.t/m_header.dt*sizeof(double)*m_no_of_pts+0.5));
-
-//      assert(data_file_position == fnoise.tellg());
-      // if ( data_file_position != fnoise.tellg() ) {
-      //   std::cout << "time\t" << m_header.t << "\tfpointer\t" << sizeof(generic_header) << "\t" << data_file_position << "\t" << fnoise.tellg() << std::endl;
-      //   fnoise.seekg(data_file_position);
-      // }
-
       {
-        int no_of_chunks = 4;
-        int chunk_size = noise_source_header.nDimX/no_of_chunks;
-        int noise_expansion = 4;
-        static int i = 0;
-        static int pointer = (noise_expansion*chunk_size);
+        const int no_of_chunks = 4;
+        const int noise_expansion = 4;
+        static int chunk_no = 0;
+        const int chunk_nx = chunkft->Get_Dim_X();
+        const int chunk_ny = chunkft->Get_Dim_Y();
+        int64_t chunk_bytes = (sizeof(double)*chunk_nx*chunk_ny);
+        static int noise_offset = (noise_expansion*chunk_nx);
+
 
         double * chunk_in = chunkft->Getp2InReal();
         double * interpol_in = interpolft->Getp2InReal();
@@ -721,15 +717,38 @@ namespace RT_Solver
         const int64_t shifti = interpolft->Get_Dim_X() - chunkft->Get_Dim_X();
         const int64_t Nynew = interpolft->Get_red_Dim();
 
-        if (pointer >= (noise_expansion*chunk_size)) {
-          printf("New chunk\n");
-          printf("chunk_size %i i %i\n", chunk_size, i);
-          assert(i < no_of_chunks);
-          i++;
+
+        bool new_chunk = false;
+        double current_chunk = m_header.t/m_header.dt/(chunk_nx*noise_expansion);
+        int file_position = (sizeof(generic_header)+static_cast<int>(ceil(current_chunk)*chunk_bytes));
+
+        if ( file_position != fnoise.tellg() ) {
+          if ((file_position-chunk_bytes) != fnoise.tellg()) {
+            printf("\nRewind (chirp?)\n");
+            printf("Time %f\n", m_header.t);
+            std::cout << "seek\t" << fnoise.tellg() << std::endl;
+            fnoise.seekg(file_position);
+            std::cout << "new_seek\t" << fnoise.tellg() << std::endl;
+            chunk_no = ceil(current_chunk);
+            printf("noise_offset %i\n", noise_offset);
+            noise_offset = static_cast<int>(chunk_nx * (current_chunk-floor(current_chunk)) +0.5);
+            printf("new noise_offset %i\n\n", noise_offset);
+          }
+          new_chunk = true;
+
+        }
+
+        if (new_chunk) {
+          printf("\nNew chunk\n");
+          std::cout << "seek\t" << fnoise.tellg() << std::endl;
+          printf("chunk %i\n", chunk_no);
+          printf("time %f \n\n", m_header.t);
+          assert(chunk_no < no_of_chunks);
+          chunk_no++;
 
           // Read next chunk
-          fnoise.read( (char*)chunk_in, sizeof(double)*chunkft->Get_Dim_RS());
-          chunkft->save( "chunk_" + std::to_string(i) + ".bin" );
+          fnoise.read( (char*)chunk_in, sizeof(double)*chunkft->Get_Dim_X()*chunkft->Get_Dim_Y());
+//          chunkft->save( "chunk_" + std::to_string(i) + ".bin" );
           chunkft->ft(-1);
 
           // expand next chunk
@@ -753,16 +772,16 @@ namespace RT_Solver
               interpolft_out[j+(i+shifti)*Nynew][1] = chunk_out[j+i*Nyred][1];
             }
           }
-          interpolft->save( "fichunk_" + std::to_string(i) + ".bin", false );
+//          interpolft->save( "fichunk_" + std::to_string(i) + ".bin", false );
           interpolft->ft(1);
-          interpolft->save( "ichunk_" + std::to_string(i) + ".bin" );
-          pointer = 0;
+//          interpolft->save( "ichunk_" + std::to_string(i) + ".bin" );
+          noise_offset = 0;
         }
 
         for (int i = 0; i < m_no_of_pts; i++) {
-          m_noise[i] = interpol_in[i+m_no_of_pts*pointer];
+          m_noise[i] = interpol_in[i+m_no_of_pts*noise_offset];
         }
-        pointer++;
+        noise_offset++;
       }
       // Scale Noise
       for (int i = 0; i < m_no_of_pts; i++) {
