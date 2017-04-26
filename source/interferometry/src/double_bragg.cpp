@@ -110,11 +110,16 @@ namespace RT_Solver
       const double t1 = this->Get_t()+0.5*dt;
       CPoint<dim> x;
 
+      // Pulseshapes in time
+      double F = this->Amplitude_at_time();
+      if( F < 0 ) F = 0;
+
       fftw_complex O11, O12, O21, O22, O13, O31, O33, O32, O23, gamma_1, gamma_2, gamma_3, eta;
       double re1, im1, tmp1, tmp2, tmp3, V11, V22, E1, E2, Omega_p, Omega_m, test, dw;
       int I, J;
       int i,j;
 
+      std::cout << F << std::endl;
       #pragma omp for
       for ( int l=0; l<this->m_no_of_pts; l++ )
       {
@@ -129,9 +134,9 @@ namespace RT_Solver
 
         double phase_error = phase[0];//+m_Mirror[jk];
         dw = laser_domh[0]+(chirp_rate[0])*t1;
-        Omega_p = Amp[0]*cos(laser_k[0]*x[0]-dw*t1-phase[0]/2);
+        Omega_p = F*Amp[0]*cos(laser_k[0]*x[0]-dw*t1-phase[0]/2);
         dw = laser_domh[0]-(chirp_rate[0])*t1;
-        Omega_m = Amp[0]*cos(-laser_k[0]*x[0]-dw*t1-phase[0]/2);
+        Omega_m = F*Amp[0]*cos(-laser_k[0]*x[0]-dw*t1-phase[0]/2);
 
         if ((Omega_m == 0.0 ) && ( Omega_p == 0.0 ))
         {
