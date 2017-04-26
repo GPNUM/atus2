@@ -21,11 +21,6 @@
 // along with ATUS2.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-/**
- @author Želimir Marojević
- @brief realtime propagation
-*/
-
 #include <cstdio>
 #include <cmath>
 #include <ctime>
@@ -47,7 +42,6 @@ namespace SOB_Solver
   {
   public:
     CSOB_Min( ParameterHandler * );
-    virtual ~CSOB_Min() {};
 
     void Setup_Guess();
     void Setup_Potential();

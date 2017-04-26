@@ -124,7 +124,7 @@ protected:
                       m_rabi_threshold;
   Data<double>        m_no_of_particles;
   Data<CPoint<dim>>   m_exp_pos,
-       m_exp_mom;
+                      m_exp_mom;
 };
 
 template<int dim, class T>
@@ -269,7 +269,7 @@ void Shared_Ana_Tools <dim,T>::Run_Analysis_in_Directory()
     std::string file = files->d_name;
 
     if ( file.size() < 10 ) continue;
-    if ( file.compare( file.size()-6, 6, "_1.bin" ) == 0 )
+    if ( file.compare( file.size()-7, 7, "0_1.bin" ) == 0 )
     {
       for ( auto state : m_momentum_states)
         delete state;
@@ -440,7 +440,8 @@ void Shared_Ana_Tools <dim,T>::Expval_Position( const bool option )
     for ( int i=0; i<m_no_of_pts; i++)
     {
       x = m_ft->Get_x(i);
-      tmp += (x*(Psi[i][0]*Psi[i][0]+Psi[i][1]*Psi[i][1]));
+      x *= (Psi[i][0]*Psi[i][0]+Psi[i][1]*Psi[i][1]);
+      tmp += x;
     }
     tmp *= m_ar/Get_Particle_Number();
     m_exp_pos.back().data = tmp;
@@ -463,7 +464,8 @@ void Shared_Ana_Tools <dim,T>::Expval_Position( const bool option )
       for ( int i=0; i<m_no_of_pts; i++)
       {
         x = field->Get_x(i);
-        tmp += (x*(Psi[i][0]*Psi[i][0]+Psi[i][1]*Psi[i][1]));
+        x *= (Psi[i][0]*Psi[i][0]+Psi[i][1]*Psi[i][1]);
+        tmp += x;
       }
       tmp *= m_ar / N[j++];
       m_exp_pos.back().state_data.push_back(tmp);
@@ -487,7 +489,8 @@ void Shared_Ana_Tools <dim,T>::Expval_Momentum( const bool option )
     for ( int i=0; i<m_no_of_pts; i++)
     {
       k = m_ft->Get_k(i);
-      tmp += (k*(Psi[i][0]*Psi[i][0]+Psi[i][1]*Psi[i][1]));
+      k *= (Psi[i][0]*Psi[i][0]+Psi[i][1]*Psi[i][1]);
+      tmp += k;
     }
     tmp *= m_ar_k/N;
     m_exp_mom.back().data = tmp;
@@ -514,7 +517,8 @@ void Shared_Ana_Tools <dim,T>::Expval_Momentum( const bool option )
       for ( int i=0; i<m_no_of_pts; i++)
       {
         k = field->Get_k(i);
-        tmp += (k*(Psi[i][0]*Psi[i][0]+Psi[i][1]*Psi[i][1]));
+        k *= (Psi[i][0]*Psi[i][0]+Psi[i][1]*Psi[i][1]);
+        tmp += k;
       }
       tmp *= m_ar_k / N[j++];
       m_exp_mom.back().state_data.push_back(tmp);
@@ -601,7 +605,7 @@ void Shared_Ana_Tools <dim,T>::Phase( const bool option )
 
     for ( auto field : m_momentum_states )
     {
-      double Phase[m_no_of_pts] ;
+      double *Phase = new double[m_no_of_pts];
       fftw_complex *Psi = field->Getp2In();
 
       for ( int l=0; l<m_no_of_pts; l++ )
@@ -627,6 +631,7 @@ void Shared_Ana_Tools <dim,T>::Phase( const bool option )
       file1.write( header, sizeof(generic_header) );
       file1.write( Phi, m_no_of_pts*sizeof(double) );
       file1.close();
+      delete Phase;
     }
     m_header.bComplex = 1;
   }

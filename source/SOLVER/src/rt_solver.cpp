@@ -29,6 +29,7 @@
 #include <cstdio>
 #include <cmath>
 #include <iomanip>
+#include <fstream>
 #include <omp.h>
 #include "cft_1d.h"
 #include "cft_2d.h"
@@ -60,6 +61,7 @@ namespace RT_Solver
   CRT_Propagation<T,dim>::CRT_Propagation( ParameterHandler *p ) : CRT_Base<T,dim,1>( p )
   {
     this->Init_Potential();
+    Setup_Potential();
   }
 
   template<class T, int dim>
@@ -109,6 +111,21 @@ namespace RT_Solver
       {
         x = this->m_fields[0]->Get_x(l);
         m_Potential[0][l] = loc_mup.Eval();
+      }
+    }
+
+    if( dim == 2 )
+    {
+      std::ofstream outf("potential.txt");
+      for ( int i=0; i<this->Get_dimX(); i++ )
+      {
+        double x = double(i-this->m_shift_x)*this->Get_dx();
+        for ( int j=0; j<this->Get_dimY(); j++ )
+        {
+          double y = double(j-this->m_shift_y)*this->Get_dy();
+          outf << x << "\t" << y << "\t" << m_Potential[0][j+this->Get_dimY()*i] << "\n";
+        }
+        outf << "\n";
       }
     }
   }

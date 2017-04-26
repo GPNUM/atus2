@@ -1,0 +1,28 @@
+<SIMULATION>
+    <DIM>1</DIM>
+    <FILENAME>final_1.bin</FILENAME>
+    <FILENAME_3>final_2.bin</FILENAME_3>
+    <GUESS_1D>exp(-0.5*x^2)</GUESS_1D>
+    <GUESS_1D_2>x*exp(-0.25*x^2)</GUESS_1D_2>
+    <POTENTIAL_1D>0.5*x^2</POTENTIAL_1D>
+    <POTENTIAL_1D_2>0.25*x^2</POTENTIAL_1D_2>
+    <VCONSTANTS>
+        <Alpha_1>1,1,1</Alpha_1>
+        <Alpha_2>0.5,0.5,0.5</Alpha_2>
+        <GS_1>1,1,1,1</GS_1>
+        <GS_2>1,1,1,1</GS_2>
+        <N>1,1,1,1</N>
+    </VCONSTANTS>
+    <CONSTANTS>
+        <epsilon>1e-5</epsilon>
+        <stepsize>0.001</stepsize>
+    </CONSTANTS>
+    <ALGORITHM>
+        <NX>1024</NX>
+        <NY>256</NY>
+        <NZ>256</NZ>
+        <XMIN>-5</XMIN><XMAX>5</XMAX>
+        <YMIN>-5</YMIN><YMAX>5</YMAX>
+        <ZMIN>-5</ZMIN><ZMAX>5</ZMAX>
+    </ALGORITHM>
+</SIMULATION>
