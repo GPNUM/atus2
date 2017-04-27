@@ -197,6 +197,9 @@ namespace RT_Solver
     lis_matrix_destroy(m_cn_lA);
     lis_solver_destroy(m_solver);
 
+    delete sliceft;
+    delete chunkft;
+    delete interpolft;
     if (not no_noise_run) {
       fnoise.close();
     }
@@ -704,8 +707,6 @@ namespace RT_Solver
         const int chunk_nx = chunkft->Get_Dim_X();
         const int chunk_ny = chunkft->Get_Dim_Y();
         int64_t chunk_bytes = (sizeof(double)*chunk_nx*chunk_ny);
-        static int64_t noise_offset = 0;
-        printf("chunk_nx %i\n", chunk_nx);
 
         double * chunk_in = chunkft->Getp2InReal();
         double * interpol_in = interpolft->Getp2InReal();
@@ -717,30 +718,27 @@ namespace RT_Solver
         const int64_t shifti = interpolft->Get_Dim_X() - chunkft->Get_Dim_X();
         const int64_t Nynew = interpolft->Get_red_Dim();
 
-
         bool new_chunk = false;
-        double current_chunk = m_header.t/m_header.dt/(chunk_nx*noise_expansion);
-        int file_position = (sizeof(generic_header)+static_cast<int>(ceil(current_chunk)*chunk_bytes));
+        double chunk_factor = m_header.t/m_header.dt/(chunk_nx*noise_expansion);
+        int current_chunk = floor((m_header.t+0.25*m_header.dt)/m_header.dt/(chunk_nx*noise_expansion));
+        int64_t file_position = (sizeof(generic_header)+static_cast<int>((current_chunk+1)*chunk_bytes));
+        static int64_t noise_offset = 0;
+        int64_t demanded_noise_offset = static_cast<int64_t>((chunk_factor-current_chunk)*chunk_nx*noise_expansion+0.5);;
 
         if ( file_position != fnoise.tellg() ) {
           if ((file_position-chunk_bytes) != fnoise.tellg()) {
             printf("\nRewind (chirp?)\n");
             printf("Time %f\n", m_header.t);
             std::cout << "seek\t" << fnoise.tellg() << std::endl;
-            fnoise.seekg(file_position);
+            fnoise.seekg(file_position-chunk_bytes);
             std::cout << "new_seek\t" << fnoise.tellg() << std::endl;
             chunk_no = ceil(current_chunk);
-            printf("noise_offset %lld\n", noise_offset);
-            noise_offset = static_cast<int64_t>(chunk_nx * (current_chunk-floor(current_chunk)) +0.5);
-            printf("new noise_offset %lld\n\n", noise_offset);
           }
           new_chunk = true;
+          noise_offset = 0;
         }
-        if (static_cast<int64_t>(current_chunk-floor(current_chunk)*chunk_nx) != noise_offset) {
-          printf("!!!!!");
-        }
-        printf("\nsoll offset %lld, ist offset %lld \n ", (current_chunk-floor(current_chunk)*chunk_nx), noise_offset);
 
+        assert(demanded_noise_offset == noise_offset);
         if (new_chunk) {
           printf("\nNew chunk\n");
           std::cout << "seek\t" << fnoise.tellg() << std::endl;
@@ -784,9 +782,7 @@ namespace RT_Solver
         for (int i = 0; i < m_no_of_pts; i++) {
           m_noise[i] = interpol_in[i+m_no_of_pts*noise_offset];
         }
-        printf("\nold offset %lld\n", noise_offset);
         noise_offset++;
-        printf("new offset %lld\n", noise_offset);
       }
 
       // Scale Noise
