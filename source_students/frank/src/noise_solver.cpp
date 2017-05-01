@@ -72,6 +72,7 @@ namespace RT_Solver
     LIS_MATRIX m_cn_lA, m_cn_rA;
     LIS_VECTOR m_x, m_b;
     LIS_SOLVER m_solver;
+    double* m_x_backup;
 
     vector<double> m_noise;
     vector<double> m_dx_noise;
@@ -161,6 +162,7 @@ namespace RT_Solver
     printf("N %i\n", N);
     lis_vector_create(0, &m_x);
     lis_vector_set_size(m_x, 0, 2*N);
+    m_x_backup = m_x->value;
     lis_vector_create(0, &m_b);
     lis_vector_set_size(m_b, 0, 2*N);
 
@@ -190,18 +192,18 @@ namespace RT_Solver
   }
 
   CRT_Propagation_1D::~CRT_Propagation_1D() {
-    m_x->value = nullptr;
+    m_x->value = m_x_backup;
     lis_vector_destroy(m_x);
     lis_vector_destroy(m_b);
     lis_matrix_destroy(m_cn_rA);
     lis_matrix_destroy(m_cn_lA);
     lis_solver_destroy(m_solver);
 
-    delete sliceft;
-    delete chunkft;
-    delete interpolft;
     if (not no_noise_run) {
       fnoise.close();
+      delete sliceft;
+      delete chunkft;
+      delete interpolft;
     }
 
     m_oftotal.close();
@@ -749,7 +751,7 @@ namespace RT_Solver
 
           // Read next chunk
           fnoise.read( (char*)chunk_in, sizeof(double)*chunkft->Get_Dim_X()*chunkft->Get_Dim_Y());
-//          chunkft->save( "chunk_" + std::to_string(i) + ".bin" );
+          chunkft->save( "chunk_" + std::to_string(chunk_no) + ".bin" );
           chunkft->ft(-1);
 
           // expand next chunk
@@ -773,9 +775,9 @@ namespace RT_Solver
               interpolft_out[j+(i+shifti)*Nynew][1] = chunk_out[j+i*Nyred][1];
             }
           }
-//          interpolft->save( "fichunk_" + std::to_string(i) + ".bin", false );
+          interpolft->save( "fichunk_" + std::to_string(chunk_no) + ".bin", false );
           interpolft->ft(1);
-//          interpolft->save( "ichunk_" + std::to_string(i) + ".bin" );
+          interpolft->save( "ichunk_" + std::to_string(chunk_no) + ".bin" );
           noise_offset = 0;
         }
 

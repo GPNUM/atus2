@@ -38,14 +38,18 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-  if( argc < 3 )
+  if( argc < 2 )
     {
       printf( "Too few arguments\n" );
-      printf( "Parameter xml file and wavefunction .bin needed.\n" );
+      printf( "Parameter xml file and (optional) wavefunction .bin needed.\n" );
       printf( "eg. noise_gen params.xml inf_0.000_1.bin\n" );
       return EXIT_FAILURE;
     }
 
+  string wavefun = "../inf_zero.bin";
+  if (argc > 2) {
+    wavefun = argv[2];
+  }
   const int no_chunks = 16;
   const int fak = 4;
 
@@ -81,7 +85,7 @@ int main(int argc, char *argv[])
 
   generic_header header = {};
   {
-    ifstream fheader(argv[2], ifstream::binary );
+    ifstream fheader(wavefun, ifstream::binary );
     fheader.read( (char*)&header, sizeof(generic_header));
     fheader.close();
   }
@@ -118,6 +122,7 @@ int main(int argc, char *argv[])
   double end_size = header.nDimX*header.nDimY*sizeof(double)/pow(1024,3);
   printf("Memory: Runtime %f GB, End %f GB\n", runtime_size, end_size);
 
+  vector<double> fac = {100,10};
   Fourier::CNoise<Fourier::rft_2d,2> noise( header );
   noise.color_noise_custom(2,chunk_dkx);
   noise.save("Noise.bin");

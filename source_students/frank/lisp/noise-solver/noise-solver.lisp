@@ -34,22 +34,16 @@
                     :error-output nil))
 
 (defvar *noise.gpl* "gnuplot -e \"set terminal png;
+set pm3d map;
 set output \\\"Noise.png\\\";
 sp \\\"<gpo3 -re red_Noise.bin\\\" w pm3d;
-print \\\"Noise done\\\";
-set output \\\"dxNoise.png\\\";
-sp \\\"<gpo3 -re red_dxNoise.bin\\\" w pm3d;
-print \\\"dxNoise done\\\";
-set output \\\"dx2Noise.png\\\";
-sp \\\"<gpo3 -re red_dx2Noise.bin\\\" w pm3d;
-print \\\"dx2Noise done\\\"\";")
+print \\\"Noise done\\\";")
 
 (defun generate-noise (parameter-file)
-  (run (format nil "noise_generator ../~a" parameter-file))
+  (run (format nil "noise_gen ../~a ../inf_zero.bin" parameter-file))
   (run "reduce_data Noise.bin")
-  (run "reduce_data dxNoise.bin")
-  (run "reduce_data dx2Noise.bin")
-  (run *noise.gpl*))
+;  (run *noise.gpl*)
+  )
 
 (defvar *rabi.gpl* "gnuplot -e \"set terminal png;
 set output \\\"Rabi.png\\\";
@@ -65,14 +59,10 @@ print \\\"Rabi done\\\"\"")
                                                    dir
                                                    (pathname-name param-file))))
               (format t "Run in directory: ~a~%" (uiop:getcwd))
-              (unless (every #'probe-file (list "../Noise.bin"
-                                                "../dxNoise.bin"
-                                                "../dx2Noise.bin"))
+              (unless (every #'probe-file (list "../Noise.bin"))
                 (error "Noise missing in ~a~%" dir))
               (format t "Solve~%")
-              (time (run (format nil "noise_solver ../../~a" param-file)))
-              (when (uiop:file-exists-p "Rabi_1_0.txt")
-                (run *rabi.gpl*))))))
+              (time (run (format nil "noise_solver ../../~a" param-file)))))))
 
 (defun average-data (start end filename subdirs)
   (loop :for subdir :in (ensure-list subdirs)
@@ -143,17 +133,19 @@ print \\\"Rabi done\\\"\"")
                   (run command)))))
 
 (defun generate-helper (args)
-  (let ((start (parse-integer (first args)))
-        (end (parse-integer (second args)))
-        (parameter-files (subseq args 2)))
-    (loop :for parameter-file :in parameter-files
-       :do (loop :for dir :from start :to end
-              :do
-              (uiop:with-current-directory
-                  ((ensure-directories-exist
-                    (format nil "~a/" dir)))
-                (format t "Run in directory: ~a/~%" (uiop:getcwd))
-                (generate-noise (format nil "../~a" parameter-file)))))))
+  (if args
+      (let ((start (parse-integer (first args)))
+            (end (parse-integer (second args)))
+            (parameter-files (subseq args 2)))
+        (loop :for parameter-file :in parameter-files
+              :do (loop :for dir :from start :to end
+                        :do
+                           (uiop:with-current-directory
+                               ((ensure-directories-exist
+                                 (format nil "~a/" dir)))
+                             (format t "Run in directory: ~a/~%" (uiop:getcwd))
+                             (generate-noise (format nil "~a" parameter-file))))))
+      (print "noise-solver generate <start> <end> <parameter-files*>")))
 
 (defun xml-file-p (filename)
   (when (string= "xml" (pathname-type (pathname filename)))
@@ -313,29 +305,37 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
            (run (concatenate 'string "bragg ../../" file)))))
 
 (defun bragg-solve-helper (args)
-  (bragg-solve args))
+  (if args
+      (bragg-solve args)
+      (print "noise-solver bragg-solve <param-files*>")))
 
 (defun solve-helper (args)
-  (let ((start (parse-integer (first args)))
-        (end (parse-integer (second args)))
-        (param-files (subseq args 2)))
-    (noise-solver start end param-files)))
+  (if args
+      (let ((start (parse-integer (first args)))
+            (end (parse-integer (second args)))
+            (param-files (subseq args 2)))
+        (noise-solver start end param-files))
+      (print "noise-solver solve <start> <end> <param-files*>")))
 
 (defun average-helper (args)
-  (let ((start (first args))
-        (end (second args))
-        (filename (third args))
-        (subdirs (mapcar #'pathname-name (subseq args 3))))
-    (if (string= (pathname-type filename) "bin")
-        (average-binary-data start end filename subdirs)
-        (average-data start end filename subdirs))))
+  (if args
+      (let ((start (parse-integer (first args)))
+            (end (parse-integer (second args)))
+            (filename (third args))
+            (subdirs (mapcar #'pathname-name (subseq args 3))))
+        (if (string= (pathname-type filename) "bin")
+            (average-binary-data start end filename subdirs)
+            (average-data start end filename subdirs)))
+      (print "noise-solver average <start> <end> <filename> <subdirs*>")))
 
 (defun cmd-helper (args)
-  (let ((start (parse-integer (first args)))
-        (end (parse-integer (second args)))
-        (command (third args))
-        (subdirs (mapcar #'pathname-name (subseq args 3))))
-    (cmd start end command subdirs)))
+  (if args
+      (let ((start (parse-integer (first args)))
+            (end (parse-integer (second args)))
+            (command (third args))
+            (subdirs (mapcar #'pathname-name (subseq args 3))))
+        (cmd start end command subdirs))
+      (print "noise-solver cmd <start> <end> <command> <subdirs*>")))
 
 (defun fetch (start end filename subdirs)
   (ensure-directories-exist "fetched/")
@@ -345,11 +345,13 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
                                 (format nil "fetched/~a-~a-~a" num subdir filename)))))
 
 (defun fetch-helper (args)
-  (let ((start (parse-integer (first args)))
-        (end (parse-integer (second args)))
-        (filename (third args))
-        (subdirs (mapcar #'pathname-name (subseq args 3))))
-    (fetch start end filename subdirs)))
+  (if args
+      (let ((start (parse-integer (first args)))
+            (end (parse-integer (second args)))
+            (filename (third args))
+            (subdirs (mapcar #'pathname-name (subseq args 3))))
+        (fetch start end filename subdirs))
+      (print "noise-solver fetch <start> <end> <filename> <subdirs*>")))
 
 (defun main (&optional (argv (uiop:command-line-arguments)))
   (when (null argv)
