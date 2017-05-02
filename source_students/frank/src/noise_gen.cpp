@@ -122,9 +122,9 @@ int main(int argc, char *argv[])
   double end_size = header.nDimX*header.nDimY*sizeof(double)/pow(1024,3);
   printf("Memory: Runtime %f GB, End %f GB\n", runtime_size, end_size);
 
-  vector<double> fac = {100,10};
+  vector<double> fac = {10,10};
   Fourier::CNoise<Fourier::rft_2d,2> noise( header );
-  noise.color_noise_custom(2,chunk_dkx);
+  noise.color_noise_custom2(2,chunk_dkx, fac);
   noise.save("Noise.bin");
 
   fftw_cleanup_threads();

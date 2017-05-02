@@ -142,6 +142,13 @@ namespace Fourier
 
     void color_noise_custom( const double exponent, const double mink0 )
     {
+      std::array<double, dim> fac = {1.0};
+      color_noise_custom2( exponent, mink0, fac);
+    };
+
+    template <typename ContType>
+    void color_noise_custom2( const double exponent, const double mink0, ContType& fac)
+    {
       CPoint<dim> k;
 
       #pragma omp parallel for private(k)
@@ -170,7 +177,7 @@ namespace Fourier
           double tmp=1;
           for( int i=0; i<dim; i++ )
           {
-            tmp += pow(k[i],fabs(exponent));
+            tmp += pow(k[i]*fac[i],fabs(exponent));
           }
           double tmp2 = 1/tmp;
           m_out[l][0] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*tmp2;
