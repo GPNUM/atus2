@@ -39,7 +39,7 @@ namespace Fourier
   class CNoise : public T
   {
   public:
-    CNoise( const generic_header& header, const double a = time(nullptr) ) : T(header) , m_r(omp_get_max_threads())
+    CNoise( const generic_header& header, const int64_t a = time(nullptr) ) : T(header) , m_r(omp_get_max_threads())
     {
       m_seed = a;
       srand( m_seed );
@@ -263,7 +263,7 @@ namespace Fourier
     };
 
   protected:
-    double m_seed;
+    int64_t m_seed;
     std::vector<gsl_rng*> m_r;
 
     using T::m_in;

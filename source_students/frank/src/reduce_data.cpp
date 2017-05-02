@@ -48,20 +48,25 @@ int main(int argc, char *argv[])
 
   generic_header header;
   ifstream fsignal(argv[1], ifstream::binary );
+  if (fsignal.fail()) {
+    std::cout << "File not found: " << argv[1] << std::endl;
+    abort();
+  }
   fsignal.read( (char*)&header, sizeof(generic_header));
   long NX = header.nDimX;
   long NY = header.nDimY;
+  long pixel = 512;
 
-  if ( (NX < 1024) || (NY < 1024) ) {
+  if ( (NX < pixel) || (NY < pixel) ) {
     std::cout << "Data already small" << std::endl;
     return 0;
   }
 
-  long rNX = NX/1024;
-  long rNY = NY/1024;
+  long rNX = NX/pixel;
+  long rNY = NY/pixel;
 
-  header.nDimX = 1024;
-  header.nDimY = 1024;
+  header.nDimX = pixel;
+  header.nDimY = pixel;
   header.dx *= rNX;
   header.dy *= rNY;
 
@@ -75,12 +80,12 @@ int main(int argc, char *argv[])
 
   if (header.bComplex) {
     signal_complex = fftw_alloc_complex( NX * NY );
-    rsignal_complex = fftw_alloc_complex( 1024 * 1024 );
+    rsignal_complex = fftw_alloc_complex( pixel * pixel );
     fsignal.read( (char*)signal_complex, sizeof(fftw_complex)*NX*NY );
     fsignal.close();
   } else {
     signal_real = new double[ NX * NY ];
-    rsignal_real = new double[ 1024 * 1024 ];
+    rsignal_real = new double[ pixel * pixel ];
     fsignal.read( (char*)signal_real, sizeof(double)*NX*NY );
     fsignal.close();
   }
@@ -88,17 +93,17 @@ int main(int argc, char *argv[])
   long ij;
   long rij;
   if (header.bComplex) {
-    for (long i = 0; i < 1024; i++) {
-      for (long j = 0; j < 1024; j++) {
-        rij = j + i*1024;
+    for (long i = 0; i < pixel; i++) {
+      for (long j = 0; j < pixel; j++) {
+        rij = j + i*pixel;
         ij = j*rNY + i*NY*rNX;
         rsignal_complex[rij][0] = signal_complex[ij][0];
       }
     }
   } else {
-    for (long i = 0; i < 1024; i++) {
-      for (long j = 0; j < 1024; j++) {
-        rij = j + i*1024;
+    for (long i = 0; i < pixel; i++) {
+      for (long j = 0; j < pixel; j++) {
+        rij = j + i*pixel;
         ij = j*rNY + i*NY*rNX;
         rsignal_real[rij] = signal_real[ij];
       }
@@ -112,10 +117,10 @@ int main(int argc, char *argv[])
   char* bin_signal;
   if (header.bComplex) {
     bin_signal = reinterpret_cast<char*>(rsignal_complex);
-    file1.write( bin_signal, 1024*1024*sizeof(fftw_complex) );
+    file1.write( bin_signal, pixel*pixel*sizeof(fftw_complex) );
   } else {
     bin_signal = reinterpret_cast<char*>(rsignal_real);
-    file1.write( bin_signal, 1024*1024*sizeof(double) );
+    file1.write( bin_signal, pixel*pixel*sizeof(double) );
   }
 
   file1.close();

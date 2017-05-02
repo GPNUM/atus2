@@ -52,6 +52,10 @@ int main(int argc, char *argv[])
 
   generic_header header;
   std::ifstream fdata(argv[1], ifstream::binary );
+  if (fdata.fail()) {
+    std::cout << "File not found: " << argv[1] << std::endl;
+    abort();
+  }
   fdata.read( (char*)&header, sizeof(generic_header));
 
   int N = 1000;

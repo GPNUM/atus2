@@ -29,3 +29,9 @@ TARGET_LINK_LIBRARIES( prob_dist myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} m ${M
 
 ADD_EXECUTABLE( noise_gen noise_gen.cpp )
 TARGET_LINK_LIBRARIES( noise_gen myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} m ${MUPARSER_LIBRARY} ${LIS_LIBRARY} )
+
+ADD_EXECUTABLE( spread_1d spread_1d.cpp )
+TARGET_LINK_LIBRARIES( spread_1d myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} m ${MUPARSER_LIBRARY} ${LIS_LIBRARY} )
+
+ADD_EXECUTABLE( interpol_chirp interpol_chirp.cpp )
+TARGET_LINK_LIBRARIES( interpol_chirp myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} m ${MUPARSER_LIBRARY} ${LIS_LIBRARY} )

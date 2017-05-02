@@ -21,4 +21,4 @@
 # You should have received a copy of the GNU General Public License
 # along with ATUS2.  If not, see <http://www.gnu.org/licenses/>.
 #
-cppcheck -Iinclude/ -Ilib_myutils -Ilib_myutils_mpi_2/src_mpi --language=c++ --enable=all -j 6 . 2> err.txt
+cppcheck -Iinclude/ -Isource/libs/lib_myutils -Isource/libs/lib_myutils_mpi_2/src_mpi --language=c++ --enable=all -j 6 . 2> err.txt
