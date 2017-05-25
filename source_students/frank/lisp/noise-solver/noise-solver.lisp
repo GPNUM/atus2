@@ -8,6 +8,34 @@
   (remove nil (mapcar (lambda (x) (read-from-string x nil nil))
                       (uiop:split-string str))))
 
+(defun parse-data (file &key (start-line 0) (end-line nil))
+  (with-open-file (in file)
+    (loop :for line-number :from start-line
+       :while (if end-line
+                  (< line-number end-line)
+                  t)
+       :for line = (read-line in nil nil)
+       :while line
+       :collect (parse-data-line line))))
+
+(defun write-list (filename list)
+  (with-open-file (out filename :direction :output :if-exists :supersede :if-does-not-exist :create)
+      (loop :for elem :in list
+         :do (format out "~a~%" elem))))
+
+(defun select-column (data column)
+  (mapcar (lambda (x) (elt x column))
+          data))
+
+(defun select-columns (data start end)
+  (loop :for i :from start :to end
+     :collect (select-column data i)))
+
+(defun transpose-lists (lists)
+  (loop :for i :below (length (first lists))
+     :collect (loop :for list :in lists
+                 :collect (elt list i))))
+
 (defun avg-data (list)
   (cons (caar list) (mapcar (lambda (x) (/ x (length list)))
                             (rest (reduce #'(lambda (x y) (mapcar #'+ x y))
