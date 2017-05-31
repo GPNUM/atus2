@@ -83,11 +83,12 @@ Otherwise returns nil. Test is done via equal."
 
 (defparameter *make-threads* (or (get-arg "-j") 1))
 
-(defun run (cmd)
+(defun run (cmd &key (ignore-error-status nil))
   (format t "~a ~~~a ~a~%" (uiop:getcwd) (if *root-p* "#" "$") cmd)
   (uiop:run-program (format nil "~a" cmd)
                     :output :interactive
-                    :error-output :interactive))
+                    :error-output :interactive
+                    :ignore-error-status ignore-error-status))
 
 (defun export-variables (full-name)
   (sb-posix:setenv "PATH"
@@ -347,6 +348,7 @@ prepend-path LD_RUN_PATH     $path/lib64
   (when (or (arg-exist-p "-h") (arg-exist-p "--help"))
     (format t "-h                    Print this help text
 --help                Print this help text
+--no-fetch            Skip Download
 -j THREADS            Number of make threads
 --build-dir DIR       Build directory
                           System Default: ~a
@@ -434,7 +436,8 @@ q - Abort Installation.
                                             (or (getf package :path)
                                                 (remove-tgz-filetype tarball))
                                             (uiop:getcwd))))
-                             (progn (run (format nil "curl -O ~a"  url))
+                             (progn (unless (arg-exist-p "--no-fetch")
+                                        (run (format nil "curl -O ~a"  url)))
                                     (run (format nil "tar xfz ~a" tarball))
                                     (format t "src-dir ~a~%" src-dir)
                                     (uiop:ensure-directory-pathname src-dir)))))))
