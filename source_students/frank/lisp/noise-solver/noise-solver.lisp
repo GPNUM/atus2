@@ -226,16 +226,13 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
                    (pathname pathname)))
 
 (defun read-number (in)
-  (let ((num (read in nil nil)))
-    (if (or (numberp num) (null num))
-        num
-        (error "Not a number: ~a" num))))
-
-(defun read-number-from-string (string &key (eof-error-p t) (start 0))
-  (let ((num (read-from-string string eof-error-p nil :start start)))
-    (if (numberp num)
-        num
-        (error "Not a number: ~a" num))))
+  (let* ((pos (file-position in))
+         (line (read-line in nil nil)))
+    (multiple-value-bind (num end) (parse-float:parse-float line :junk-allowed t)
+      (file-position in (+ pos end))
+      (if num
+          num
+          (error "Not a number: ~a" line)))))
 
 (defun rms (&rest numbers)
   "Calculates root means squared of numbers"
@@ -264,7 +261,7 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
                   :when (= x1 x2)
                   :unless (> 65000 x1 45000)
                   :do
-                  (format out "~a ~a ~a ~a~%"
+                  (format out "~a ~a~%"
                           x1
                           (rms y1))
                   (return-from nil))
@@ -354,6 +351,7 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
 
 (defvar *duration* (list 5000 10000 15000 20000 25000 30000 35000 40000 45000 50000 55000 60000 65000 70000 75000 80000))
 (defvar *duration2* (list 10000 15000 20000 25000 30000 35000 40000 45000 50000 80000))
+
 (defun generate-xml (strength duration &optional (chirp t) (g1 0.0))
   (loop :for str :in (ensure-list strength)
      :do (loop :for time :in (ensure-list duration)
@@ -412,6 +410,63 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
   </SEQUENCE>
 </SIMULATION>"
                                  str g (/ time 2) chirp))))))
+
+(defun generate-fast-xml (strength duration &optional (chirp t) (g1 0.0) (dir 45000))
+  (loop :for str :in (ensure-list strength)
+     :do (loop :for time :in (ensure-list duration)
+            :do (loop :for g :in (ensure-list g1)
+                   :do (with-open-file (out (format nil "if-~@[~f-~]~@[chirp-~]~*~d~@[-g1-~f~].xml"
+                                                    str chirp time g)
+                                            :direction :output
+                                            :if-exists :supersede
+                                            :if-does-not-exist :create)
+                         (format out "<SIMULATION>
+  <DIM>1</DIM>
+  <FILENAME>../if-~f-chirp-~d-g1-~f/~d.000_1.bin</FILENAME>
+  <FILENAME_2>../../inf_zero.bin</FILENAME_2>
+  <FILENAME_3>../~4:*if-~f-chirp-~d-g1-~f/~d.000_1.bin</FILENAME_3>
+  <FILENAME_4>../../inf_zero.bin</FILENAME_4>
+  <NOISE>../Noise.bin</NOISE>
+  <CONSTANTS>
+    <laser_k>8.05289</laser_k>
+    <laser_k_2>8.05289</laser_k_2>
+    <laser_domh>0.0471239</laser_domh>
+    <laser_domh_2>0.0471239</laser_domh_2>
+    <laser_dk>0</laser_dk>
+    <rabi_threshold>4</rabi_threshold>
+    <Noise_Amplitude>~f</Noise_Amplitude>
+  </CONSTANTS>
+  <VCONSTANTS>
+    <Amp_1>-14.0496,-14.0496</Amp_1>
+    <Amp_2>-14.0496,-14.0496</Amp_2>
+    <Alpha_1>0.000365368,0.000365368,0.000365368</Alpha_1>
+    <Alpha_2>0.000365368,0.000365368,0.000365368</Alpha_2>
+    <Delta_L>0,-6283.19,0,0</Delta_L>
+    <GS_1>~f,~:*~f,0,0,0,0</GS_1>
+    <GS_2>~:*~f,~:*~f,0,0,0,0</GS_2>
+    <GS_3>0,0,0,0,0,0</GS_3>
+    <GS_4>0,0,0,0,0,0</GS_4>
+    <GS_5>0,0,0,0,0,0</GS_5>
+    <GS_6>0,0,0,0,0,0</GS_6>
+    <Beta>0.0,0.0,0.0</Beta>
+  </VCONSTANTS>
+  <ALGORITHM>
+    <NX>16384</NX>
+    <NY>1</NY>
+    <NZ>1</NZ>
+    <XMIN>-320</XMIN>
+    <XMAX>320</XMAX>
+    <NK>25</NK>
+    <NA>700</NA>
+    <EPSILON>1e-6</EPSILON>
+  </ALGORITHM>
+  <SEQUENCE>
+    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"each\" pn_freq=\"last\" rabi_output_freq=\"last\" >200</bragg_ad>
+    <freeprop dt=\"1\" Nk=\"100\" output_freq=\"each\" pn_freq=\"last\">~d</freeprop>
+    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"each\" pn_freq=\"last\" rabi_output_freq=\"each\"~@[ chirp_mode=\"1\" no_of_chirps=\"10\"~]>100</bragg_ad>
+  </SEQUENCE>
+</SIMULATION>"
+                           str dir g (+ 100 (/ time 2)) str g (/ time 2) chirp))))))
 
 (defun generate-more-chirp-xml (start end strength duration &optional (chirp 30) (g1 0.0))
   (loop :for str :in (ensure-list strength)
