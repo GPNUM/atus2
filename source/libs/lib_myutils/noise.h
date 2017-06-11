@@ -150,7 +150,7 @@ namespace Fourier
     void color_noise_custom2( const double exponent, const double mink0, ContType& fac)
     {
       CPoint<dim> k;
-
+      double maxval = 0.0;
       #pragma omp parallel for private(k)
       for( int64_t l=0; l<this->m_dim_fs; l++ )
       {
@@ -180,14 +180,54 @@ namespace Fourier
             tmp += pow(k[i]*fac[i],fabs(exponent));
           }
           double tmp2 = 1/tmp;
+          if (tmp2 > maxval) {
+            maxval = tmp2;
+          }
           m_out[l][0] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*tmp2;
           m_out[l][1] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*tmp2;
         }
       }
 
       this->ft(1);
-
+      std::cout << "max: " << max() << "\t" << maxval << std::endl;
+      assert(1.0 > fabs(max()));
       *this *= 1/max();
+
+      // Calculate Probability Distribution
+      int N = 10000;
+      int prob_dist[N] = {};
+      double nMin = -1.0;
+      double nMax = -nMin;
+      double dn = (nMax-nMin)/N;
+      for (int j = 0; j <this->m_dim; j++) {
+        prob_dist[static_cast<int64_t>((m_in_real[j]-nMin)/dn)] += 1;
+      }
+
+      int imaxval = 0;
+      for (int i = 0; i < N; i++) {
+        if (prob_dist[i] > imaxval) {
+          imaxval = prob_dist[i];
+        }
+      }
+
+      // Scale on 1/e width
+      double xleft = 0;
+      for (int i = 0; i < N; i++) {
+        double value = prob_dist[i];
+        if (value > imaxval/exp(1)) {
+          xleft = nMin + i*dn;
+          break;
+        }
+      }
+      std::cout << "xleft: " << xleft << std::endl;
+      *this *= 0.25/xleft;
+
+      // Cutoff at abs(1)
+      for (int j = 0; j <this->m_dim; j++) {
+        if (fabs(m_in_real[j]) > 1.0) {
+          m_in_real[j] = 0.9999;
+        }
+      }
     };
 
     CNoise& operator*=(const double s)

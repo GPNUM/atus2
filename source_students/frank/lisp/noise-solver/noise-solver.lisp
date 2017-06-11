@@ -228,11 +228,11 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
 (defun read-number (in)
   (let* ((pos (file-position in))
          (line (read-line in nil nil)))
-    (multiple-value-bind (num end) (parse-float:parse-float line :junk-allowed t)
-      (file-position in (+ pos end))
-      (if num
-          num
-          (error "Not a number: ~a" line)))))
+    (when line
+      (multiple-value-bind (num end) (parse-float:parse-float line :junk-allowed t)
+      (when (/= (+ pos end 1) (file-position in))
+        (file-position in (+ pos end)))
+      num))))
 
 (defun rms (&rest numbers)
   "Calculates root means squared of numbers"
@@ -590,7 +590,8 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
 
 (defun main (&optional (argv (uiop:command-line-arguments)))
   (when (null argv)
-    (error "No commands given."))
+    (format t "~&No commands given.~%")
+    (uiop:quit))
   (switch ((first argv) :test #'string=)
     ("solve" (solve-helper (rest argv)))
     ("bragg-solve" (bragg-solve-helper (rest argv)))
@@ -599,4 +600,5 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
     ("average" (average-helper (rest argv)))
     ("cmd" (cmd-helper (rest argv)))
     ("fetch" (fetch-helper (rest argv)))
-    (t (error "Command not known: ~a" (first argv)))))
+    (t (format t "Command not known: ~a~%" (first argv))
+       (uiop:quit))))
