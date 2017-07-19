@@ -6,16 +6,20 @@
 (require "sb-posix")
 
 (defparameter *argv* (uiop:command-line-arguments))
+(defparameter *CC* (unless (string= (uiop:getenv "CC") "")
+                     (uiop:getenv "CC")))
+(defparameter *CXX* (unless (string= (uiop:getenv "CXX") "")
+                      (uiop:getenv "CXX")))
 
 (defvar *packages*
   '((:name openmpi :version "2.1.0"
-     :url "https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.1.0.tar.gz")
+     :url "https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.0.tar.gz")
     (:name lapack :version "3.7.0"
      :url "http://www.netlib.org/lapack/lapack-3.7.0.tgz")
     (:name gsl :version "2.3"
      :url "ftp://ftp.gnu.org/gnu/gsl/gsl-2.3.tar.gz")
     (:name muparser :version "2.2.5"
-     :url "https://github.com/beltoforion/muparser/archive/v2.2.5.tar.gz"
+     :url "https://codeload.github.com/beltoforion/muparser/tar.gz/v2.2.5"
      :path "muparser-2.2.5")
     (:name fftw :version "3.3.6-pl2"
      :url "http://fftw.org/fftw-3.3.6-pl2.tar.gz")
@@ -79,11 +83,12 @@ Otherwise returns nil. Test is done via equal."
 
 (defparameter *make-threads* (or (get-arg "-j") 1))
 
-(defun run (cmd)
+(defun run (cmd &key (ignore-error-status nil))
   (format t "~a ~~~a ~a~%" (uiop:getcwd) (if *root-p* "#" "$") cmd)
   (uiop:run-program (format nil "~a" cmd)
                     :output :interactive
-                    :error-output :interactive))
+                    :error-output :interactive
+                    :ignore-error-status ignore-error-status))
 
 (defun export-variables (full-name)
   (sb-posix:setenv "PATH"
@@ -136,6 +141,7 @@ Otherwise returns nil. Test is done via equal."
     (run (format nil
                  "./configure --prefix=~a~a --enable-mpi-fortran"
                  *install-dir* full-name))
+    (run "make clean")
     (run (format nil "make ~@[-j ~a~]" *make-threads*))
     (run "make install")
     (install-module name *install-dir* version *module-dir*
@@ -155,8 +161,10 @@ Otherwise returns nil. Test is done via equal."
     (uiop:chdir (uiop:ensure-pathname (format nil "~abuild/" (uiop:getcwd))
                                       :ensure-directory t :ensure-directories-exist t))
     (run (format nil "cmake -DCMAKE_BUILD_TYPE=Release \\
+~@[-DCMAKE_C_COMPILER=~a~] ~@[-DCMAKE_CXX_COMPILER=~a~] \\
 -DCMAKE_FORTRAN_FLAGS_RELEASE=\"-march=native -fpic -O3\" \\
--DCMAKE_INSTALL_PREFIX=~a~a -DBUILD_SHARED_LIBS=ON .." *install-dir* full-name))
+-DCMAKE_INSTALL_PREFIX=~a~a -DBUILD_SHARED_LIBS=ON .." *CC* *CXX* *install-dir* full-name))
+    (run "make clean")
     (run (format nil "make ~@[-j ~a~]" *make-threads*))
     (run "make install")
     (install-module name *install-dir* version *module-dir*)
@@ -168,6 +176,7 @@ Otherwise returns nil. Test is done via equal."
   (let* ((name (string-downcase (symbol-name sw-name)))
          (full-name (format nil "~a-~a" name version)))
     (run (format nil "./configure --prefix=~a~a" *install-dir* full-name))
+    (run "make clean")
     (run (format nil "make ~@[-j ~a~] CFLAGS=\"-march=native -O3\"" *make-threads*))
     (run "make install")
     (install-module name *install-dir* version *module-dir*)
@@ -179,6 +188,7 @@ Otherwise returns nil. Test is done via equal."
   (let* ((name (string-downcase (symbol-name sw-name)))
          (full-name (format nil "~a-~a" name version)))
     (run (format nil "./configure --prefix=~a~a" *install-dir* full-name))
+    (run "make clean")
     (run "make")
     (run "make install")
     (install-module name *install-dir* version *module-dir*)
@@ -204,6 +214,7 @@ Otherwise returns nil. Test is done via equal."
                  (search " sse2 " cpu-flags)
                  (search " avx " cpu-flags)
                  (search " fma " cpu-flags)))
+    (run "make clean")
     (run (format nil "make ~@[-j ~a~]" *make-threads*))
     (run (format nil "make install"))
     (install-module name *install-dir* version *module-dir*)
@@ -218,8 +229,11 @@ Otherwise returns nil. Test is done via equal."
   (let* ((name (string-downcase (symbol-name sw-name)))
          (full-name (format nil "~a-~a" name version)))
     (uiop:chdir (uiop:ensure-pathname (format nil "~abuild/" (uiop:getcwd)) :ensure-directory t :ensure-directories-exist t))
-    (run (format nil "cmake -DCMAKE_INSTALL_PREFIX=~a~a -DCMAKE_BUILD_TYPE=Release .."
-                 *install-dir* full-name))
+    (run (format nil "cmake -DCMAKE_INSTALL_PREFIX=~a~a -DCMAKE_BUILD_TYPE=Release \\
+~@[-DCMAKE_C_COMPILER=~a~] ~@[-DCMAKE_CXX_COMPILER=~a~] \\
+.."
+                 *install-dir* full-name *CC* *CXX*))
+    (run "make clean")
     (run (format nil "make ~@[-j ~a~]" *make-threads*))
     (run "make install")
     (install-module name *install-dir* version *module-dir*)
@@ -231,6 +245,7 @@ Otherwise returns nil. Test is done via equal."
   (let* ((name (string-downcase (symbol-name sw-name)))
          (full-name (format nil "~a-~a" name version)))
     (run (format nil "./configure --prefix=~a~a --enable-omp --enable-shared" *install-dir* full-name))
+    (run "make clean")
     (run (format nil "make ~@[-j ~a~]" *make-threads*))
     (run "make install")
     (install-module name *install-dir* version *module-dir*)
@@ -247,7 +262,8 @@ Otherwise returns nil. Test is done via equal."
     (uiop:chdir (uiop:ensure-pathname (format nil "~abuild/" (uiop:getcwd))
                                       :ensure-directory t
                                       :ensure-directories-exist t))
-    (run "cmake ..")
+    (run (format nil "cmake ~@[-DCMAKE_C_COMPILER=~a~] ~@[-DCMAKE_CXX_COMPILER=~a~] .." *CC* *CXX*))
+    (run "make clean")
     (run (format nil "make ~@[-j ~a~]" *make-threads*))
     (let ((exit-code
            (nth-value 2 (uiop:run-program "which doxygen"
@@ -332,6 +348,7 @@ prepend-path LD_RUN_PATH     $path/lib64
   (when (or (arg-exist-p "-h") (arg-exist-p "--help"))
     (format t "-h                    Print this help text
 --help                Print this help text
+--no-fetch            Skip Download
 -j THREADS            Number of make threads
 --build-dir DIR       Build directory
                           System Default: ~a
@@ -370,6 +387,8 @@ prepend-path LD_RUN_PATH     $path/lib64
   (format t "    Software will be installed in: ~a~%" *install-dir*)
   (format t "    Modulefiles will be installed in: ~a~%" *module-dir*)
   (format t "    Make Threads: ~a~%" *make-threads*)
+  (format t "    CC=~a, CXX=~a~%" *CC* *CXX*)
+
   (when *debug-mode*
     (format t "    Debug Mode: ON~%" ))
 
@@ -417,7 +436,8 @@ q - Abort Installation.
                                             (or (getf package :path)
                                                 (remove-tgz-filetype tarball))
                                             (uiop:getcwd))))
-                             (progn (run (format nil "wget -nc ~a"  url))
+                             (progn (unless (arg-exist-p "--no-fetch")
+                                        (run (format nil "curl -O ~a"  url)))
                                     (run (format nil "tar xfz ~a" tarball))
                                     (format t "src-dir ~a~%" src-dir)
                                     (uiop:ensure-directory-pathname src-dir)))))))

@@ -39,7 +39,7 @@ namespace Fourier
   class CNoise : public T
   {
   public:
-    CNoise( const generic_header& header, const double a = time(nullptr) ) : T(header) , m_r(omp_get_max_threads())
+    CNoise( const generic_header& header, const int64_t a = time(nullptr) ) : T(header) , m_r(omp_get_max_threads())
     {
       m_seed = a;
       srand( m_seed );
@@ -142,8 +142,15 @@ namespace Fourier
 
     void color_noise_custom( const double exponent, const double mink0 )
     {
-      CPoint<dim> k;
+      std::array<double, dim> fac = {1.0};
+      color_noise_custom2( exponent, mink0, fac);
+    };
 
+    template <typename ContType>
+    void color_noise_custom2( const double exponent, const double mink0, ContType& fac)
+    {
+      CPoint<dim> k;
+      double maxval = 0.0;
       #pragma omp parallel for private(k)
       for( int64_t l=0; l<this->m_dim_fs; l++ )
       {
@@ -170,17 +177,57 @@ namespace Fourier
           double tmp=1;
           for( int i=0; i<dim; i++ )
           {
-            tmp += pow(k[i],fabs(exponent));
+            tmp += pow(k[i]*fac[i],fabs(exponent));
           }
           double tmp2 = 1/tmp;
+          if (tmp2 > maxval) {
+            maxval = tmp2;
+          }
           m_out[l][0] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*tmp2;
           m_out[l][1] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*tmp2;
         }
       }
 
       this->ft(1);
-
+      std::cout << "max: " << max() << "\t" << maxval << std::endl;
+      assert(1.0 > fabs(max()));
       *this *= 1/max();
+
+      // Calculate Probability Distribution
+      int N = 10000;
+      int prob_dist[N] = {};
+      double nMin = -1.0;
+      double nMax = -nMin;
+      double dn = (nMax-nMin)/N;
+      for (int j = 0; j <this->m_dim; j++) {
+        prob_dist[static_cast<int64_t>((m_in_real[j]-nMin)/dn)] += 1;
+      }
+
+      int imaxval = 0;
+      for (int i = 0; i < N; i++) {
+        if (prob_dist[i] > imaxval) {
+          imaxval = prob_dist[i];
+        }
+      }
+
+      // Scale on 1/e width
+      double xleft = 0;
+      for (int i = 0; i < N; i++) {
+        double value = prob_dist[i];
+        if (value > imaxval/exp(1)) {
+          xleft = nMin + i*dn;
+          break;
+        }
+      }
+      std::cout << "xleft: " << xleft << std::endl;
+      *this *= 0.25/xleft;
+
+      // Cutoff at abs(1)
+      for (int j = 0; j <this->m_dim; j++) {
+        if (fabs(m_in_real[j]) > 1.0) {
+          m_in_real[j] = 0.9999;
+        }
+      }
     };
 
     CNoise& operator*=(const double s)
@@ -256,7 +303,7 @@ namespace Fourier
     };
 
   protected:
-    double m_seed;
+    int64_t m_seed;
     std::vector<gsl_rng*> m_r;
 
     using T::m_in;

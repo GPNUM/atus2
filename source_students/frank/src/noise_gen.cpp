@@ -21,13 +21,16 @@
 // along with ATUS2.  If not, see <http://www.gnu.org/licenses/>.
 //
 
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
 #include <deque>
 #include <vector>
-#include <fstream>
 #include "noise.h"
 #include "gsl/gsl_rng.h"
 #include "gsl/gsl_randist.h"
@@ -38,20 +41,36 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-  if( argc < 3 )
+  if( argc < 2 )
     {
       printf( "Too few arguments\n" );
-      printf( "Parameter xml file and wavefunction .bin needed.\n" );
-      printf( "eg. noise_gen params.xml inf_0.000_1.bin\n" );
+      printf( "Parameter xml file and (optional) wavefunction .bin needed.\n" );
+      printf( "eg. noise_gen params.xml [inf_0.000_1.bin] [seed] [no_of_threads]\n" );
       return EXIT_FAILURE;
     }
 
-  const int no_chunks = 2;
-  const int fak = 1;
+  string wavefun = "../inf_zero.bin";
+  if (argc > 2) {
+    wavefun = argv[2];
+  }
+
+  int64_t seed = time(nullptr);
+  if (argc > 3) {
+    std::cout << "User provided Seed!" << std::endl;
+    seed = stol(argv[3]);
+  }
+  std::cout << "Seed\t" << seed << std::endl;
+
+  const int fak = 8;
+  const int no_of_chunks = 64;
 
   int no_of_threads = 4;
   char* envstr = getenv( "MY_NO_OF_THREADS" );
   if( envstr != NULL ) no_of_threads = atoi( envstr );
+  if (argc > 4) {
+    std::cout << "User provided Number of Threads!" << std::endl;
+    no_of_threads = stoi(argv[4]);
+  }
   printf("Number of threads %i\n", no_of_threads);
 
   fftw_init_threads();
@@ -69,12 +88,23 @@ int main(int argc, char *argv[])
       duration += seq_item.duration.front();
     }
   }
+  printf("duration: %f\n", duration);
+  printf("dt: %f\n", dt);
   assert(dt > 0.0);
   assert(duration > 0.0);
+  int exp =ceil(log2(duration/dt));
+  printf("exp %i\n", exp);
+  duration = pow(2.0, ceil(log2(duration/dt)))*dt;
+  printf("new duration: %f\n", duration);
+  printf("lower duration: %f\n", pow(2.0, exp-1)*dt);
 
   generic_header header = {};
   {
-    ifstream fheader(argv[2], ifstream::binary );
+    ifstream fheader(wavefun, ifstream::binary );
+    if (fheader.fail()) {
+      std::cout << "File not found: " << wavefun << std::endl;
+      abort();
+    }
     fheader.read( (char*)&header, sizeof(generic_header));
     fheader.close();
   }
@@ -90,14 +120,14 @@ int main(int argc, char *argv[])
   header.yMax     = header.xMax;
   header.xMin     = 0;
   header.xMax     = duration;
-  header.dy       = header.dx/fak;
+  header.dy       = header.dx*fak;
   header.dky      = 2.0*M_PI/fabs(header.yMax-header.yMin);
-  header.dx       = fabs( header.xMax-header.xMin )/double(header.nDimX)/fak;
+  header.dx       = fabs( header.xMax-header.xMin )/double(header.nDimX);
   header.dkx      = 2.0*M_PI/fabs(header.xMax-header.xMin);
   header.nself_and_data = header.nself + (header.nDimX*header.nDimY*header.nDimZ)*header.nDatatyp;
 
   // header for the chunk
-  const double chunk_len =  fabs( header.xMax-header.xMin ) / double(no_chunks);
+  const double chunk_len =  fabs( header.xMax-header.xMin ) / double(no_of_chunks);
   const double chunk_dkx =  2.0*M_PI/fabs(chunk_len);
 
   printf( "dimX == %lld\n", header.nDimX );
@@ -107,10 +137,26 @@ int main(int argc, char *argv[])
   printf( "dy  == %g\n", header.dy );
   printf( "dky == %g\n", header.dky );
 
-  Fourier::CNoise<Fourier::rft_2d,2> noise( header );
-  noise.color_noise_custom(2,chunk_dkx);
-  noise.save("noise.bin");
+  double runtime_size = (header.nDimX*header.nDimY*sizeof(double)+header.nDimX*(header.nDimY/2 + 1)*sizeof(fftw_complex))/pow(1024,3);
+  double end_size = header.nDimX*header.nDimY*sizeof(double)/pow(1024,3);
+  printf("Memory: Runtime %f GB, End %f GB\n", runtime_size, end_size);
 
+  vector<double> fac = {10,10};
+  std::cout << "fac_x\t" << fac[0] << std::endl;
+  std::cout << "fac_y\t" << fac[1] << std::endl;
+
+  Fourier::CNoise<Fourier::rft_2d,2> noise( header, seed );
+  noise.color_noise_custom2(2,chunk_dkx, fac);
+  noise.save("Noise.bin");
+
+  ofstream log("noise_gen.log");
+  log << "Seed\t" << seed << std::endl;
+  log << "Threads\t" << no_of_threads << std::endl;
+  log << "Expansion_X\t" << fak << std::endl;
+  log << "Expansion_Y\t" << fak << std::endl;
+  log << "Chunks\t" << no_of_chunks << std::endl;
+  log << "fac_x\t" << fac[0] << std::endl;
+  log << "fac_y\t" << fac[1] << std::endl;
   fftw_cleanup_threads();
   return EXIT_SUCCESS;
 }

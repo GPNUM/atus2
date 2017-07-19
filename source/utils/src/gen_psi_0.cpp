@@ -25,6 +25,7 @@
 #include <cstdio>
 #include <cmath>
 #include <fstream>
+#include <functional>
 #include <omp.h>
 #include "muParser.h"
 #include "ParameterHandler.h"

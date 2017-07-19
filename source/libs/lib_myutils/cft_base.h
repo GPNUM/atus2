@@ -53,13 +53,14 @@ namespace Fourier
       }
 
       Setup(header);
-      
+
       if ( m_type == Fourier::TYPE::COMPLEX )
       {
         if( b )
         {
           m_in_real = nullptr;
           m_in  = fftw_alloc_complex( m_dim );
+          assert(m_in != nullptr);
           m_out = m_in;
           std::memset( m_in, 0, m_dim*sizeof(fftw_complex));
         }
@@ -67,7 +68,9 @@ namespace Fourier
         {
           m_in_real = nullptr;
           m_in  = fftw_alloc_complex( m_dim );
+          assert(m_in != nullptr);
           m_out = fftw_alloc_complex( m_dim );
+          assert(m_out != nullptr);
           std::memset( m_in, 0, m_dim*sizeof(fftw_complex));
           std::memset( m_out, 0, m_dim*sizeof(fftw_complex));
         }
@@ -75,8 +78,10 @@ namespace Fourier
       else
       {
           m_in_real = fftw_alloc_real( m_dim );;
+          assert(m_in_real != nullptr);
           m_in  = nullptr;
           m_out = fftw_alloc_complex( m_dim_fs );
+          assert(m_out != nullptr);
           std::memset( m_in_real, 0, m_dim*sizeof(double));
           std::memset( m_out, 0, m_dim_fs*sizeof(fftw_complex));
       }
@@ -89,9 +94,9 @@ namespace Fourier
     {
       fftw_destroy_plan( m_forwardPlan );
       fftw_destroy_plan( m_backwardPlan );
-      
+
       if ( m_type == Fourier::TYPE::COMPLEX )
-      {      
+      {
         if( !m_bInplace )
         {
           fftw_free( m_in );
@@ -105,13 +110,13 @@ namespace Fourier
       else
       {
         fftw_free( m_in_real );
-        fftw_free( m_out );        
+        fftw_free( m_out );
       }
     }
 
     void SetFix( bool bval ) { m_bfix = bval; };
 
-    void save( const std::string& filename, bool rs=true ) 
+    void save( const std::string& filename, bool rs=true )
     {
       std::ofstream ofs(filename);
       generic_header header = m_header;
@@ -148,7 +153,7 @@ namespace Fourier
       if( rs )
       {
         if ( m_type == Fourier::TYPE::COMPLEX )
-        {               
+        {
           ofs.write(reinterpret_cast<char*>(m_in),sizeof(fftw_complex)*this->m_dim);
         }
         else
@@ -157,7 +162,7 @@ namespace Fourier
         }
       }
       else
-      {      
+      {
         ofs.write(reinterpret_cast<char*>(m_out),sizeof(fftw_complex)*this->m_dim_fs);
       }
     };
@@ -175,7 +180,7 @@ namespace Fourier
     int Get_Dim_Z() { return m_dim_z; };
     int64_t Get_red_Dim() { return m_red_dim; };
     int64_t Get_Dim_RS() { return m_dim; }; /// total number of sampling points in real space
-    int64_t Get_Dim_FS() { return m_dim_fs; }; /// total number of sampling points in fourier space 
+    int64_t Get_Dim_FS() { return m_dim_fs; }; /// total number of sampling points in fourier space
   protected:
 
     int m_dim_x; /// Number of sampling points in x-dimension
@@ -184,8 +189,8 @@ namespace Fourier
     int m_shift_x; /// Index shift in x-dimension
     int m_shift_y; /// Index shift in y-dimension
     int m_shift_z; /// Index shift in z-dimension
-    int64_t m_red_dim; 
-    int64_t m_dim; /// Product of sampling points in real space for each spatial direction 
+    int64_t m_red_dim;
+    int64_t m_dim; /// Product of sampling points in real space for each spatial direction
     int64_t m_dim_fs; /// Product of sampling points in fourier space for each spatial direction
     int m_isign; /// Last Transformation direction
 
@@ -200,7 +205,7 @@ namespace Fourier
     double m_dky; /// Stepsize in ky-direction
     double m_dkz; /// Stepsize in kz-direction
 
-    double * m_in_real; ///  
+    double * m_in_real; ///
     fftw_complex * m_in; /// Input array in real space
     fftw_complex * m_out; /// Output array in fourier space
 
@@ -251,9 +256,8 @@ namespace Fourier
           case 3: m_red_dim = m_dim_z/2 + 1;
                   m_dim_fs = m_dim_x*m_dim_y*m_red_dim;
           break;
-        }       
+        }
       }
     }
   };
 } // end of namespace
-

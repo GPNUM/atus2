@@ -5,7 +5,7 @@
   :author "Frank Stuckenberg <frank.stuckenberg@uni-bremen.de>"
   :license "GPLv3"
   :serial t
-  :depends-on (:uiop :ieee-floats :alexandria)
+  :depends-on (:uiop :ieee-floats :alexandria :parse-float)
   :components ((:file "package")
                (:file "binary-data")
                (:file "noise-solver" :depends-on ("binary-data"))))
