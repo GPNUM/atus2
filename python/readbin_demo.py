@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # ATUS2 - The ATUS2 package is atom interferometer Toolbox developed at ZARM
 # (CENTER OF APPLIED SPACE TECHNOLOGY AND MICROGRAVITY), Germany. This project is
@@ -54,18 +54,31 @@ dky   = header[20]
 dkz   = header[21]
 dt    = header[22]
 
+#print("%s\n" % type(header_raw))
+
+if ( header[0] != 1380 ):
+  print( "Invalid file format." )
+  exit()
+
+if ( bCmpx != 1 ):
+  print( "File does not contain complex data." )
+  exit()
+
+print("sizeof(generic_header) = %ld\n" % (header[0]))
 print("dims = (%ld,%ld,%ld)\n" % (nDimX,nDimY,nDimZ))
 print("xrange = (%g,%g)\n" % (xMin,xMax))
 print("yrange = (%g,%g)\n" % (yMin,yMax))
 print("zrange = (%g,%g)\n" % (zMin,zMax))
-print("t = (%g)\n" % (t))
+print("t = %g\n" % (t))
 
 fh.seek(header[0],0)
+
+cmplxsize = struct.calcsize("dd")
 
 if (nDims == 1):
   data = np.zeros((nDimX),dtype=np.complex_) 
   for i in range(0, nDimX):
-    rawcplxno = fh.read(struct.calcsize("dd"))
+    rawcplxno = fh.read(cmplxsize)
     cmplxno = struct.unpack( "dd", rawcplxno )
     #print("(%g,%g)\n" % (cmplxno[0],cmplxno[1]))
     data[i] = complex(cmplxno[0],cmplxno[1])
@@ -74,9 +87,10 @@ if (nDims == 2):
   data = np.zeros((nDimX,nDimY),dtype=np.complex_) 
   for i in range(0, nDimX):
     for j in range(0, nDimY):
-      rawcplxno = fh.read(struct.calcsize("dd"))
+      rawcplxno = fh.read(cmplxsize)
       cmplxno = struct.unpack( "dd", rawcplxno )
-      #print("(%g,%g)\n" % (cmplxno[0],cmplxno[1]))
+      #print("%s\n" % type(cmplxno))
+      #print("(%d,%d) (%g,%g)\n" % (i,j,cmplxno[0],cmplxno[1]))
       data[i,j] = complex(cmplxno[0],cmplxno[1])
 
 if (nDims == 3):
@@ -84,9 +98,9 @@ if (nDims == 3):
   for i in range(0, nDimX):
     for j in range(0, nDimY):
       for k in range(0, nDimZ):
-        rawcplxno = fh.read(struct.calcsize("dd"))
+        rawcplxno = fh.read(cmplxsize)
         cmplxno = struct.unpack( "dd", rawcplxno )
-        #print("(%g,%g)\n" % (cmplxno[0],cmplxno[1]))
+        #print("(%d,%d,%d) (%g,%g)\n" % (i,j,k,cmplxno[0],cmplxno[1]))
         data[i,j,k] = complex(cmplxno[0],cmplxno[1])
 
 fh.close()
