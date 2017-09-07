@@ -60,12 +60,12 @@ int main(int argc, char *argv[])
 
   int N = 1000;
   int prob_dist[N] = {};
-  double nMin = -1.0;
+  double nMax = 1.0;
   if (argc > 2) {
-    nMin = atof(argv[2]);
+    nMax = atof(argv[2]);
   }
-  double nMax = -nMin;
-  double dn = (nMax-nMin)/N;
+  double nMin = -nMax;
+  double dn = (nMax-nMin)/static_cast<double>(N);
   std::cout << "nDimX \t" << header.nDimX << std::endl;
   std::cout << "nDimY \t" << header.nDimY << std::endl;
   printf("N %i\n", N);
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 
   double *data_real;
   fftw_complex *data_complex;
-  if (header.bComplex) {
+  if (header.bComplex == 1) {
     data_complex = new fftw_complex[header.nDimY];
     for (int i = 0; i < header.nDimX; i++) {
       fdata.read( (char*)data_complex, sizeof(fftw_complex)*header.nDimY );
@@ -85,10 +85,15 @@ int main(int argc, char *argv[])
     }
   } else {
     data_real = new double[header.nDimY];
+    if (data_real == nullptr) {
+      abort();
+    }
     for (int i = 0; i < header.nDimX; i++) {
       fdata.read( (char*)data_real, sizeof(double)*header.nDimY );
-      for (int j = 0; j <header.nDimY; j++) {
-        prob_dist[static_cast<int>((data_real[j]-nMin)/dn)] += 1;
+      for (int j = 0; j < header.nDimY; j++) {
+        if ((fabs(data_real[j]) < nMax)) {
+          prob_dist[static_cast<int>((data_real[j]-nMin)/dn)] += 1;
+        }
       }
     }
   }
