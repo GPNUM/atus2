@@ -6,33 +6,6 @@
 (require "sb-posix")
 
 (defparameter *argv* (uiop:command-line-arguments))
-(defparameter *CC* (unless (string= (uiop:getenv "CC") "")
-                     (uiop:getenv "CC")))
-(defparameter *CXX* (unless (string= (uiop:getenv "CXX") "")
-                      (uiop:getenv "CXX")))
-
-(defvar *packages*
-  '((:name openmpi :version "2.1.1"
-     :url "https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.1.tar.gz")
-    (:name gsl :version "2.4"
-     :url "ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz")
-    (:name muparser :version "2.2.5"
-     :url "https://codeload.github.com/beltoforion/muparser/tar.gz/v2.2.5"
-     :path "muparser-2.2.5")
-    (:name fftw :version "3.3.6-pl2"
-     :url "http://fftw.org/fftw-3.3.6-pl2.tar.gz")
-    (:name vtk :version "7.1.0"
-     :url "http://www.vtk.org/files/release/7.1/VTK-7.1.0.tar.gz")
-    (:name lis :version "1.7.29"
-     :url "http://www.ssisc.org/lis/dl/lis-1.7.29.tar.gz")
-    (:name atus2 :version "git"))
-  "List of installable packages")
-
-(defun package-match (key value)
-  "Returns first plist in *packages* with <key> corresponds to <value>.
-Otherwise returns nil. Test is done via equal."
-  (find-if (lambda (x) (equal (getf x key) value)) *packages*))
-
 (defun get-arg (arg)
   "Get next command line argument after arg"
   (let ((pos (position arg *argv* :test #'equalp)))
@@ -43,43 +16,59 @@ Otherwise returns nil. Test is done via equal."
   "Checks if arg is supplied as command line argument"
   (find arg *argv* :test #'string=))
 
+(defparameter *CC* (unless (string= (uiop:getenv "CC") "")
+                     (uiop:getenv "CC")))
+(defparameter *CXX* (unless (string= (uiop:getenv "CXX") "")
+                      (uiop:getenv "CXX")))
 (defparameter *debug-mode* (or (arg-exist-p "--debug") (arg-exist-p "-d")))
-
-(defun create-directory (path)
-  (when path
-    (ensure-directories-exist (uiop:ensure-directory-pathname
-                               (uiop:truenamize path)))))
-
 (defparameter *root-p*
   (string= "0" (string-trim '(#\Space #\Tab #\Newline #\Return #\Linefeed)
                             (uiop:run-program "id -u" :output 'string))))
-
 (defparameter *atus-dir* (uiop:getcwd))
-
-(defvar *default-system-build-dir* (pathname "/tmp/"))
-(defvar *default-user-build-dir* (merge-pathnames "local/src/" (user-homedir-pathname)))
-(defparameter *build-dir*
-  (or (create-directory (get-arg "--build-dir"))
-      (if *root-p*
-          *default-system-build-dir*
-          *default-user-build-dir*)))
-(defvar *default-system-install-dir* (pathname "/opt/"))
-(defvar *default-user-install-dir* (merge-pathnames "local/opt/" (user-homedir-pathname)))
-(defparameter *install-dir*
-  (or (create-directory (get-arg "--install-dir"))
-      (if *root-p*
-          *default-system-install-dir*
-          *default-user-install-dir*)))
-(defvar *default-system-module-dir* (pathname "/usr/local/share/modules/modulefiles/"))
-(defvar *default-user-module-dir* (merge-pathnames "local/modules/modulefiles/"
-                                                   (user-homedir-pathname)))
-(defparameter *module-dir*
-  (or (create-directory (get-arg "--module-dir"))
-      (if *root-p*
-          *default-system-module-dir*
-          *default-user-module-dir*)))
-
+(defparameter *default-system-build-dir* (pathname "/tmp/"))
+(defparameter *default-user-build-dir* (merge-pathnames "local/src/" (user-homedir-pathname)))
+(defparameter *build-dir* (or (when (get-arg "--build-dir")
+                                (uiop:ensure-directory-pathname
+                                 (uiop:truenamize (get-arg "--build-dir"))))
+                              (if *root-p*
+                                  *default-system-build-dir*
+                                  *default-user-build-dir*)))
+(defparameter *default-system-install-dir* (pathname "/opt/"))
+(defparameter *default-user-install-dir*
+  (merge-pathnames "local/opt/" (user-homedir-pathname)))
+(defparameter *install-dir* (or (when (get-arg "--install-dir")
+                                  (uiop:ensure-directory-pathname
+                                   (uiop:truenamize (get-arg "--install-dir"))))
+                                (if *root-p*
+                                    *default-system-install-dir*
+                                    *default-user-install-dir*)))
+(defparameter *default-system-module-dir* (pathname "/usr/local/share/modules/modulefiles/"))
+(defparameter *default-user-module-dir* (merge-pathnames "local/modules/modulefiles/"
+                                                         (user-homedir-pathname)))
+(defparameter *module-dir* (or (when (get-arg "--module-dir")
+                                 (uiop:ensure-directory-pathname
+                                  (uiop:truenamize (get-arg "--module-dir"))))
+                               (if *root-p*
+                                   *default-system-module-dir*
+                                   *default-user-module-dir*)))
 (defparameter *make-threads* (or (get-arg "-j") 1))
+(defparameter *packages* nil)
+
+(defun download (url)
+  (run (format nil "curl -LO ~a" url)))
+(defun tar-extract (file)
+  (run (format nil "tar xfz ~a" file)))
+(defun remove-tgz-filetype (file)
+  (subseq file 0 (or (search ".tar.gz" file)
+                     (search ".tgz" file))))
+(defun make (&key threads arg)
+  (run (format nil "make~@[ -j ~a~]~@[ ~a~]" threads arg)))
+(defun pathname-type= (pathspec type)
+  (string= (pathname-type pathspec) type))
+(defun package-match (key value)
+  "Returns first plist in *packages* with <key> corresponds to <value>.
+Otherwise returns nil. Test is done via equal."
+  (find-if (lambda (x) (equal (getf x key) value)) *packages*))
 
 (defun run (cmd &key (ignore-error-status nil))
   (format t "~a ~~~a ~a~%" (uiop:getcwd) (if *root-p* "#" "$") cmd)
@@ -97,6 +86,14 @@ Otherwise returns nil. Test is done via equal."
                                              *install-dir* full-name
                                              (sb-posix:getenv "LD_LIBRARY_PATH"))
                    1))
+
+(defun get-cpu-flags ()
+  (let* ((cpuinfo (uiop:run-program "cat /proc/cpuinfo" :output 'string))
+         (flags-start (+ (search "flags		: " cpuinfo)
+                         (length "flags		: "))))
+    (subseq cpuinfo flags-start (search (string #\Newline)
+                                        cpuinfo
+                                        :start2 flags-start))))
 
 (defun check-binary-exist (binary &optional optional-p)
   (let ((exit-code
@@ -131,144 +128,205 @@ Otherwise returns nil. Test is done via equal."
         t
         (format t "~@[Optional ~*~]Dependency missing: ~a ~%" optional-p library))))
 
+(defclass software ()
+  ((name :initarg :name
+         :initform (error ":name must be specified")
+         :accessor name
+         :documentation "Software Name")
+   (version :initarg :version
+            :initform (error ":version must be specified")
+            :accessor version
+            :documentation "Software Version")
+   (full-name :initarg :full-name
+              :initform nil
+              :accessor full-name
+              :documentation "Full name of software")
+   (url :initarg :url
+        :initform (error ":url must be specified")
+        :accessor url
+        :documentation "Url where source code is located")
+   (env-variables :initarg :env-variables
+                  :initform nil
+                  :accessor env-variables
+                  :documentation "List of additional environment variables and their values.")))
+
+(defmacro define-software (name &key version url env-vars)
+  `(progn
+     (defclass ,name (software) ())
+     (push (make-instance ',name
+                          :name (string-downcase (symbol-name ',name))
+                          :version ,version
+                          :full-name (concatenate 'string (string-downcase (symbol-name ',name)) "-" ,version)
+                          :url ,url
+                          :env-variables ,env-vars)
+           *packages*)))
+
+(define-software openmpi
+    :version "2.1.1"
+    :url "https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.1.tar.gz")
+(define-software gsl
+    :version "2.4"
+    :url "ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz")
+(define-software muparser
+    :version "2.2.5"
+    :url "https://codeload.github.com/beltoforion/muparser/tar.gz/v2.2.5")
+(define-software fftw
+    :version "3.3.6-pl2"
+    :url "http://fftw.org/fftw-3.3.6-pl2.tar.gz")
+(define-software vtk
+    :version "7.1.0"
+    :url "http://www.vtk.org/files/release/7.1/VTK-7.1.0.tar.gz")
+(define-software lis
+    :version "1.7.29"
+    :url "http://www.ssisc.org/lis/dl/lis-1.7.29.tar.gz")
+(define-software atus2
+    :version "git")
+(setf *packages* (reverse *packages*))
+
+(defmethod fetch ((sw software))
+  (with-slots (name version url) sw
+    (download url)
+    (run (format nil "tar xfz ~a" (file-namestring url)))))
+
+(defmethod install-module ((sw software))
+  (%install-module sw))
+
 ;; openmpi
-(defmethod install ((sw-name (eql 'openmpi)) version)
+(defmethod install-module ((sw software))
+  (with-slots (name version env-variables) sw
+    (%install-module sw :variables '("CC" "mpicc"
+                                     "CXX" "mpic++"
+                                     "FC" "mpif90"))))
+
+(defmethod install ((sw openmpi))
   "Install method for openmpi"
-  (let* ((name (string-downcase (symbol-name sw-name)))
-         (full-name (format nil "~a-~a" name version)))
-    (run (format nil
-                 "./configure --prefix=~a~a --enable-mpi-fortran"
-                 *install-dir* full-name))
-    (run "make clean")
-    (run (format nil "make ~@[-j ~a~]" *make-threads*))
-    (run "make install")
-    (install-module name *install-dir* version *module-dir*
-                    :variables'("CC" "mpicc"
-                                "CXX" "mpic++"
-                                "FC" "mpif90"))
-    (export-variables full-name)
-    (sb-posix:setenv "CC" "mpicc" 1)
-    (sb-posix:setenv "CXX" "mpic++" 1)
-    (sb-posix:setenv "FC" "mpif90" 1)))
+  (with-slots (full-name url) sw
+    (uiop:with-current-directory ((uiop:ensure-directory-pathname (remove-tgz-filetype (file-namestring url))))
+      (run (format nil
+                   "./configure --prefix=~a~a --enable-mpi-fortran"
+                   *install-dir* full-name))
+      (run "make clean")
+      (run (format nil "make ~@[-j ~a~]" *make-threads*))
+      (run "make install")
+      (export-variables full-name)
+      (sb-posix:setenv "CC" "mpicc" 1)
+      (sb-posix:setenv "CXX" "mpic++" 1)
+      (sb-posix:setenv "FC" "mpif90" 1))))
 
 ;; gsl
-(defmethod install ((sw-name (eql 'gsl)) version)
+(defmethod install ((sw gsl))
   "Install method for gsl"
-  (let* ((name (string-downcase (symbol-name sw-name)))
-         (full-name (format nil "~a-~a" name version)))
-    (run (format nil "./configure --prefix=~a~a" *install-dir* full-name))
-    (run "make clean")
-    (run (format nil "make ~@[-j ~a~] CFLAGS=\"-march=native -O3\"" *make-threads*))
-    (run "make install")
-    (install-module name *install-dir* version *module-dir*)
-    (export-variables full-name)))
+  (with-slots (full-name url) sw
+    (uiop:with-current-directory ((uiop:ensure-directory-pathname (remove-tgz-filetype (file-namestring url))))
+      (run (format nil "./configure --prefix=~a~a" *install-dir* full-name))
+      (run "make clean")
+      (run (format nil "make ~@[-j ~a~] CFLAGS=\"-march=native -O3\"" *make-threads*))
+      (run "make install")
+      (export-variables full-name))))
 
 ;; muparser
-(defmethod install ((sw-name (eql 'muparser)) version)
+(defmethod install ((sw muparser))
   "Install method for muparser"
-  (let* ((name (string-downcase (symbol-name sw-name)))
-         (full-name (format nil "~a-~a" name version)))
-    (run (format nil "./configure --prefix=~a~a" *install-dir* full-name))
-    (run "make clean")
-    (run "make")
-    (run "make install")
-    (install-module name *install-dir* version *module-dir*)
-    (export-variables full-name)))
-
-(defun get-cpu-flags ()
-  (let* ((cpuinfo (uiop:run-program "cat /proc/cpuinfo" :output 'string))
-        (flags-start (+ (search "flags		: " cpuinfo)
-                        (length "flags		: "))))
-    (subseq cpuinfo flags-start (search (string #\Newline)
-                                        cpuinfo
-                                        :start2 flags-start))))
+  (with-slots (full-name url) sw
+    (uiop:with-current-directory
+        ((uiop:ensure-directory-pathname full-name))
+      (run (format nil "./configure --prefix=~a~a" *install-dir* full-name))
+      (run "make clean")
+      (run "make")
+      (run "make install")
+      (export-variables full-name))))
 
 ;; fftw
-(defmethod install ((sw-name (eql 'fftw)) version)
+(defmethod install ((sw fftw))
   "Install method for fftw"
-  (let* ((name (string-downcase (symbol-name sw-name)))
-         (full-name (format nil "~a-~a" name version))
-         (cpu-flags (get-cpu-flags)))
-    (run (format nil "./configure --prefix=~a~a --enable-mpi --enable-openmp --enable-threads~@[ --enable-sse2~*~]~@[ --enable-avx~*~]~@[ --enable-fma~]"
-                 *install-dir*
-                 full-name
-                 (search " sse2 " cpu-flags)
-                 (search " avx " cpu-flags)
-                 (search " fma " cpu-flags)))
-    (run "make clean")
-    (run (format nil "make ~@[-j ~a~]" *make-threads*))
-    (run (format nil "make install"))
-    (install-module name *install-dir* version *module-dir*)
-    (export-variables full-name)))
+  (let ((full-name (full-name sw))
+        (url (url sw))
+        (cpu-flags (get-cpu-flags)))
+    (uiop:with-current-directory
+        ((uiop:ensure-directory-pathname (remove-tgz-filetype (file-namestring url))))
+      (run (format nil "./configure --prefix=~a~a --enable-mpi --enable-openmp --enable-threads~@[ --enable-sse2~*~]~@[ --enable-avx~*~]~@[ --enable-fma~]"
+                   *install-dir*
+                   full-name
+                   (search " sse2 " cpu-flags)
+                   (search " avx " cpu-flags)
+                   (search " fma " cpu-flags)))
+      (run "make clean")
+      (run (format nil "make ~@[-j ~a~]" *make-threads*))
+      (run (format nil "make install"))
+      (export-variables full-name))))
 
 ;; vtk
-(defmethod install ((sw-name (eql 'vtk)) version)
-  "Install method for deal.ii"
-  (unless (and (every #'check-binary-exist
-                      (list )))
-    (error "Dependencies missing"))
-  (let* ((name (string-downcase (symbol-name sw-name)))
-         (full-name (format nil "~a-~a" name version)))
-    (uiop:chdir (uiop:ensure-pathname (format nil "~abuild/" (uiop:getcwd)) :ensure-directory t :ensure-directories-exist t))
-    (run (format nil "cmake -DCMAKE_INSTALL_PREFIX=~a~a -DCMAKE_BUILD_TYPE=Release \\
+(defmethod install ((sw vtk))
+  "Install method for vtk"
+  (with-slots (full-name url) sw
+    (uiop:with-current-directory
+        ((uiop:ensure-directory-pathname (remove-tgz-filetype (file-namestring url))))
+      (uiop:chdir (uiop:ensure-pathname (format nil "~abuild/" (uiop:getcwd))
+                                        :ensure-directory t :ensure-directories-exist t))
+      (run (format nil "cmake -DCMAKE_INSTALL_PREFIX=~a~a -DCMAKE_BUILD_TYPE=Release \\
 ~@[-DCMAKE_C_COMPILER=~a~] ~@[-DCMAKE_CXX_COMPILER=~a~] \\
 .."
-                 *install-dir* full-name *CC* *CXX*))
-    (run "make clean")
-    (run (format nil "make ~@[-j ~a~]" *make-threads*))
-    (run "make install")
-    (install-module name *install-dir* version *module-dir*)
-    (export-variables full-name)))
+                   *install-dir* full-name *CC* *CXX*))
+      (run "make clean")
+      (run (format nil "make ~@[-j ~a~]" *make-threads*))
+      (run "make install")
+      (export-variables full-name))))
 
 ;; lis
-(defmethod install ((sw-name (eql 'lis)) version)
+(defmethod install ((sw lis))
   "Install method for gsl"
-  (let* ((name (string-downcase (symbol-name sw-name)))
-         (full-name (format nil "~a-~a" name version)))
-    (run (format nil "./configure --prefix=~a~a --enable-omp --enable-shared" *install-dir* full-name))
-    (run "make clean")
-    (run (format nil "make ~@[-j ~a~]" *make-threads*))
-    (run "make install")
-    (install-module name *install-dir* version *module-dir*)
-    (export-variables full-name)))
+  (with-slots (full-name url) sw
+    (uiop:with-current-directory
+        ((uiop:ensure-directory-pathname (remove-tgz-filetype (file-namestring url))))
+      (run (format nil "./configure --prefix=~a~a --enable-omp --enable-shared"
+                   *install-dir* full-name))
+      (run "make clean")
+      (run (format nil "make ~@[-j ~a~]" *make-threads*))
+      (run "make install")
+      (export-variables full-name))))
 
 ;; atus2
-(defmethod install ((sw-name (eql 'atus2)) version)
+(defmethod fetch ((sw atus2))
+  nil)
+(defmethod install-module ((sw atus2))
+  (%install-module sw
+                   :dependencies
+                   (loop :for package :in *packages*
+                      :unless (string= (name package) (name sw))
+                      :collect (format nil "~a-~a"
+                                       (string-downcase (name package))
+                                       (version package)))))
+(defmethod install ((sw atus2))
   "Install method for atus2"
   (unless (and (every #'check-binary-exist
                       (list "mpicc")))
     (error "Dependencies missing"))
-  (let* ((name (string-downcase (symbol-name sw-name)))
-         (full-name (format nil "~a-~a" name version)))
-    (uiop:chdir (uiop:ensure-pathname (format nil "~abuild/" (uiop:getcwd))
-                                      :ensure-directory t
-                                      :ensure-directories-exist t))
-    (run (format nil "cmake ~@[-DCMAKE_C_COMPILER=~a~] ~@[-DCMAKE_CXX_COMPILER=~a~] .." *CC* *CXX*))
-    (run "make clean")
-    (run (format nil "make ~@[-j ~a~]" *make-threads*))
-    (let ((exit-code
-           (nth-value 2 (uiop:run-program "which doxygen"
-                                          :ignore-error-status t))))
-      (if (= exit-code 0)
-          (run "make doc")
-          (format t "Install doxygen to generate documentation.~%")))
-    (install-module name *install-dir* version *module-dir*
-                    :dependencies
-                    (loop :for package :in *packages*
-                       :unless (eql (getf package :name) sw-name)
-                       :collect (format nil "~a-~a"
-                                        (string-downcase (getf package :name))
-                                        (getf package :version))))))
+  (with-slots (full-name) sw
+    (uiop:with-current-directory (*atus-dir*)
+      (uiop:chdir (uiop:ensure-pathname (format nil "~abuild/" (uiop:getcwd))
+                                        :ensure-directory t
+                                        :ensure-directories-exist t))
+      (run (format nil "cmake ~@[-DCMAKE_C_COMPILER=~a~] ~@[-DCMAKE_CXX_COMPILER=~a~] .." *CC* *CXX*))
+      (run "make clean")
+      (run (format nil "make ~@[-j ~a~]" *make-threads*))
+      (let ((exit-code
+             (nth-value 2 (uiop:run-program "which doxygen"
+                                            :ignore-error-status t))))
+        (if (= exit-code 0)
+            (run "make doc")
+            (format t "Install doxygen to generate documentation.~%"))))))
 
-(defun install-module (tool path version install-path
-                       &optional &key dependencies variables)
-  (let* ((full-name (concatenate 'string tool "-" version))
-         (tool-path (merge-pathnames full-name path)))
+(defun %install-module (sw
+                        &optional &key dependencies variables)
+  (let* ((tool (name sw))
+         (version (version sw))
+         (full-name (full-name sw))
+         (tool-path (merge-pathnames full-name *install-dir*)))
     (with-open-file (out (merge-pathnames full-name
-                                          (ensure-directories-exist install-path))
+                                          (ensure-directories-exist *module-dir*))
                          :direction :output :if-exists :supersede
                          :if-does-not-exist :create)
-      (format t "Install modulefiles for ~a in ~a~%" full-name install-path)
+      (format t "Install modulefiles for ~a in ~a~%" full-name *module-dir*)
       (format out "#%Module1.0#####################################################################
 ################################################################################
 
@@ -311,11 +369,7 @@ prepend-path LD_RUN_PATH     $path/lib64
               dependencies
               variables))))
 
-(defun remove-tgz-filetype (file)
-  (subseq file 0 (or (search ".tar.gz" file)
-                                      (search ".tgz" file))))
-
-(defun main ()
+(defun display-logo ()
   ;; Banner3
   (format t "~a~%~%" "
    ###    ######## ##     ##  ######           #######
@@ -324,12 +378,14 @@ prepend-path LD_RUN_PATH     $path/lib64
 ##     ##    ##    ##     ##  ######  #######  #######
 #########    ##    ##     ##       ##         ##
 ##     ##    ##    ##     ## ##    ##         ##
-##     ##    ##     #######   ######          #########")
+##     ##    ##     #######   ######          #########"))
 
-  (when (or (arg-exist-p "-h") (arg-exist-p "--help"))
-    (format t "-h                    Print this help text
---help                Print this help text
+(defun display-help ()
+  (format t "Options:
+-h, --help            Print this help text
 --no-fetch            Skip Download
+--no-modules          Skip Module file installation
+--no-install          Skip Installation
 -j THREADS            Number of make threads
 --build-dir DIR       Build directory
                           System Default: ~a
@@ -340,11 +396,11 @@ prepend-path LD_RUN_PATH     $path/lib64
 --module-dir DIR      Module directory
                           System Default: ~a
                           User Default:   ~a~%~%"
-            *default-system-build-dir* *default-user-build-dir*
-            *default-system-install-dir* *default-user-install-dir*
-            *default-system-module-dir*  *default-user-module-dir*)
-    (uiop:quit))
+          *default-system-build-dir* *default-user-build-dir*
+          *default-system-install-dir* *default-user-install-dir*
+          *default-system-module-dir*  *default-user-module-dir*))
 
+(defun check-dependencies ()
   (format t "Check Dependencies.~%")
   (unless (and (every #'check-binary-exist
                       (list "gcc"
@@ -354,14 +410,9 @@ prepend-path LD_RUN_PATH     $path/lib64
                             "cmake"
                             "doxygen")))
     (error "Error: Dependency missing.~%" )
-    (uiop:quit))
+    (uiop:quit)))
 
-  (when *debug-mode*
-    (mapcar (lambda (x) (check-binary-exist x t))
-            (list "mpicc" "mpic++" "mpif90"  "doxygen" "make"  "cmake"))
-    (mapcar (lambda (x) (check-library-exist x t))
-            (list "libmpi" "libgsl" "libgslcblas" "libfftw3" "libfftw3_mpi" "libfftw3_omp" "libmuparser" )))
-
+(defun display-current-configuration ()
   (format t "Current Configuration (see ./install -h):~%")
   (format t "    Current Working Directory: ~a~%" (uiop:getcwd))
   (format t "    Software will be build in: ~a~%" *build-dir*)
@@ -369,20 +420,39 @@ prepend-path LD_RUN_PATH     $path/lib64
   (format t "    Modulefiles will be installed in: ~a~%" *module-dir*)
   (format t "    Make Threads: ~a~%" *make-threads*)
   (format t "    CC=~a, CXX=~a~%" *CC* *CXX*)
-
   (when *debug-mode*
-    (format t "    Debug Mode: ON~%" ))
+    (format t "    Debug Mode: ON~%" )))
 
+(defun collect-selected-packages (selection)
+  (loop :for package :in *packages*
+     :for index :below (length *packages*)
+     :when (or (find #\a selection) (find (digit-char index) selection))
+     :collect package))
 
-  (unless (uiop:file-exists-p "install")
-    (error "Wrong working directory: Please restart script inside atus2 directory."))
+(defun update-shell-config ()
+  (let ((module-path (format nil "export MODULEPATH=~a:$MODULEPATH" *module-dir*))
+        (shell-config-file (if (string= (pathname-name (uiop:getenv "SHELL")) "zsh")
+                               ".zshrc"
+                               ".bashrc")))
+    (when (yes-or-no-p "Should I append the following text to your ~a?~%~a~%"
+                       shell-config-file module-path)
+      (with-open-file (out (merge-pathnames shell-config-file
+                                            (user-homedir-pathname))
+                           :direction :output
+                           :if-exists :append
+                           :if-does-not-exist :create)
+        (format out "~&~a~%" module-path)))))
 
-  (handler-case
-      (mapcar #'ensure-directories-exist (list *build-dir* *install-dir* *module-dir*))
-    (error ()
-      (format t "~%Error: Cannot create directories: ~%~{  ~a~%~}~%"
-              (list *build-dir* *install-dir* *module-dir*))
-      (uiop:quit)))
+(defun main ()
+  (display-logo)
+  (display-help)
+  (when (or (arg-exist-p "-h") (arg-exist-p "--help"))
+    (uiop:quit))
+
+  (mapcar #'ensure-directories-exist (list *build-dir* *install-dir* *module-dir*))
+
+  (check-dependencies)
+  (display-current-configuration)
 
   (format t "~%What do you want to install?
 Press number of each package to be installed and then press ENTER:
@@ -391,69 +461,29 @@ a - all
 q - Abort Installation.
 >> " (loop :for package :in *packages*
         :for index :below (length *packages*)
-        :append (list index (string-downcase (getf package :name)))))
+        :append (list index (string-downcase (name package)))))
 
-  (let ((selection (read-line t nil)))
-    (unless selection
+  (let* ((selection (read-line t nil))
+         (requested-packages (collect-selected-packages selection)))
+    ;;;; Test for Quit condition
+    (when (or (null selection) (find #\q selection))
       (fresh-line)
       (uiop:quit))
 
-    ;;;; Test for Quit condition
-    (when (find #\q selection)
-      (uiop:quit))
-
-    (loop :for package :in *packages*
-       :for index :below (length *packages*)
-       :when (or (find #\a selection) (find (digit-char index) selection))
-       :do
-       (let* ((name (getf package :name))
-              (version (getf package :version))
-              (url (getf package :url))
-              (src-dir (when url
-                         (uiop:with-current-directory (*build-dir*)
-                           (let* ((tarball (subseq url
-                                                   (1+ (position #\/ url :from-end t))))
-                                  (src-dir (merge-pathnames
-                                            (or (getf package :path)
-                                                (remove-tgz-filetype tarball))
-                                            (uiop:getcwd))))
-                             (progn (unless (arg-exist-p "--no-fetch")
-                                        (run (format nil "curl -O ~a"  url)))
-                                    (run (format nil "tar xfz ~a" tarball))
-                                    (format t "src-dir ~a~%" src-dir)
-                                    (uiop:ensure-directory-pathname src-dir)))))))
-         (uiop:with-current-directory (src-dir)
-           (install name version))))
+    (uiop:with-current-directory (*build-dir*)
+      (unless (arg-exist-p "--no-fetch")
+        (mapcar #'fetch requested-packages))
+      (unless (arg-exist-p "--no-modules")
+        (mapcar #'install-module requested-packages))
+      (unless (arg-exist-p "--no-install")
+        (mapcar #'install requested-packages)))
 
     (format t "~%Installation finished.~%")
-    (when *debug-mode*
-      (mapcar (lambda (x) (check-binary-exist x t))
-              (list "mpicc" "mpic++" "mpif90"  "doxygen" "make"  "cmake"))
-      (mapcar (lambda (x) (check-library-exist x t))
-              (list "libmpi" "libgsl" "libgslcblas" "libfftw3" "libfftw3_mpi" "libfftw3_omp" "libmuparser"  ))
-      (format t "PATH=~a~%LD_LIBRARY_PATH=~a~%" (sb-posix:getenv "PATH") (sb-posix:getenv "LD_LIBRARY_PATH"))
-      (uiop:run-program "echo $PATH" :output :interactive :ignore-error-status t)
-      (uiop:run-program "echo $LD_LIBRARY_PATH" :output :interactive :ignore-error-status t))
 
-    (let ((module-path (format nil "export MODULEPATH=~a:$MODULEPATH" *module-dir*))
-          (shell-config-file (if (string= (pathname-name (uiop:getenv "SHELL")) "zsh")
-                                 ".zshrc"
-                                 ".bashrc")))
-      (when (yes-or-no-p "Should I append the following text to your ~a?~%~a~%"
-                         shell-config-file module-path)
-        (with-open-file (out (merge-pathnames shell-config-file
-                                              (user-homedir-pathname))
-                             :direction :output
-                             :if-exists :append
-                             :if-does-not-exist :create)
-          (format out "~&~a~%" module-path))))
+    (unless (arg-exist-p "--no-modules")
+      (update-shell-config))))
 
-    (uiop:quit)))
-
-(if *debug-mode*
+(with-open-file (log "install.log" :direction :output :if-does-not-exist :create :if-exists :supersede)
+  (let ((*standard-output* (make-broadcast-stream *standard-output* log)))
     (main)
-    (handler-case
-        (main)
-      (error (con)
-        (format t "~%Error: ~a~%" con)
-        (uiop:quit))))
+    (uiop:quit)))
