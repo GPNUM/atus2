@@ -115,14 +115,16 @@ int main(int argc, char *argv[])
   Read( argv[1], header, wf1 );
   Read( argv[2], header, wf2 );
 
-  double re=0, im=0, N1=0, N2=0;
-  #pragma omp parallel for reduction(+:re,im,N1,N2)
+  double re=0, im=0, N1=0, N2=0, m1=0, m2=0;
+  #pragma omp parallel for reduction(+:re,im,N1,N2) reduction(max:m1,m2)
   for ( long long i=0; i<2*Ntot; i+=2 )
   {
     re += (wf1[i]*wf2[i] + wf1[i+1]*wf2[i+1]);
     im += (wf1[i]*wf2[i+1] - wf1[i+1]*wf2[i]);
     N1 += (wf1[i]*wf1[i] + wf1[i+1]*wf1[i+1]);
     N2 += (wf2[i]*wf2[i] + wf2[i+1]*wf2[i+1]);
+    m1 = std::max( m1, wf1[i]*wf1[i] + wf1[i+1]*wf1[i+1] );
+    m2 = std::max( m2, wf2[i]*wf2[i] + wf2[i+1]*wf2[i+1] );
   }
   
   re *= header.dx*header.dy*header.dz;
@@ -132,6 +134,7 @@ int main(int argc, char *argv[])
   double overlap = (re*re + im*im)/sqrt(N1)/sqrt(N2);
 
   std::cout << "overlap = " << overlap << std::endl;
+  std::cout << "max density = " << m1/N1 << ", " << m2/N2 << std::endl;
 
   delete [] wf1;
   delete [] wf2;
