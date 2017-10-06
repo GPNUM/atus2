@@ -11,6 +11,9 @@ TARGET_LINK_LIBRARIES( ana_expval myutils )
 ADD_EXECUTABLE( ana_expval_ex ana_expval_ex.cpp )
 TARGET_LINK_LIBRARIES( ana_expval_ex myutils )
 
+ADD_EXECUTABLE( ana_overlap ana_overlap.cpp )
+TARGET_LINK_LIBRARIES( ana_overlap myutils )
+
 ADD_EXECUTABLE( gen_mirror gen_mirror.cpp )
 TARGET_LINK_LIBRARIES( gen_mirror myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} m )
 
