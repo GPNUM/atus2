@@ -38,3 +38,9 @@ TARGET_LINK_LIBRARIES( interpol_chirp myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} 
 
 ADD_EXECUTABLE( noise_coeff noise_coeff.cpp )
 TARGET_LINK_LIBRARIES( noise_coeff myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} m ${MUPARSER_LIBRARY} ${LIS_LIBRARY} )
+
+ADD_EXECUTABLE( diff_data diff_data.cpp )
+TARGET_LINK_LIBRARIES( diff_data myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} m ${MUPARSER_LIBRARY} ${LIS_LIBRARY} )
+
+ADD_EXECUTABLE( compare_data compare_data.cpp )
+TARGET_LINK_LIBRARIES( compare_data myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} m ${MUPARSER_LIBRARY} ${LIS_LIBRARY} )
