@@ -100,6 +100,8 @@ namespace RT_Solver
     fnoise.read( (char*)&source_header, sizeof(generic_header) );
 
     chunk_size = source_header.nDimX/no_of_chunks;
+    printf("noise_nDimX %i\n",source_header.nDimX);
+    printf("no_of_chunks %i\n",no_of_chunks);
     printf("chunk_size %i\n",chunk_size);
 
     chunk_header = source_header;
@@ -550,11 +552,14 @@ namespace RT_Solver
     // Five-Point Stencel prefactors for 1st and 2nd differential
     const double fps1[] = { 1.0/(12.0*dx),
                             -8.0/(12.0*dx),
+                            0.0,
                             8.0/(12.0*dx),
                             -1.0/(12.0*dx) };
     const double fps2[] = { -1.0/(12.0*pow(dx,2)),
                             16.0/(12.0*pow(dx,2)),
-                            -30.0/(12.0*pow(dx,2)) };
+                            -30.0/(12.0*pow(dx,2)),
+                            16.0/(12.0*pow(dx,2)),
+                            -1.0/(12.0*pow(dx,2)) };
 
     // Local functions inserting the prefactor term for 2nd, 1st, 0th derivative
     auto d2 = [&](int i){ return (1.0 - m_noise[i]); };
@@ -575,52 +580,52 @@ namespace RT_Solver
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3+(2*N),
                         alpha*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                               + fps1[0]*(-d1(i-2+N) + d1(i))/2.0));
+                               + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i, (2*i)-1+(2*N),
                         alpha*(fps2[1]*(d2(i-1+N) + d2(i))/2.0
-                               + fps1[1]*(-d1(i-1+N) + d1(i))/2.0));
+                               + fps1[1]*(d1(i-1+N) + d1(i))/2.0));
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5+(2*N),
                         beta*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                              + fps1[0]*(-d1(i-2+N) + d1(i))/2.0));
+                              + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i+1, (2*i+1)-3+(2*N),
                         beta*(fps2[1]*(d2(i-1+N) + d2(i))/2.0
-                              + fps1[1]*(-d1(i-1+N) + d1(i))/2.0));
+                              + fps1[1]*(d1(i-1+N) + d1(i))/2.0));
 
       i = 1;
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3+(2*N),
                         alpha*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                               + fps1[0]*(-d1(i-2+N) + d1(i))/2.0));
+                               + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5+(2*N),
                         beta*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                              + fps1[0]*(-d1(i-2+N) + d1(i))/2.0));
+                              + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
       i = N-2;
       // real
       lis_csr_set_value(A, 2*i, (2*i)+5-(2*N),
                         alpha*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                               + fps1[3]*(-d1(i+2-N) + d1(i))/2.0));
+                               + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3-(2*N),
                         beta*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                              + fps1[3]*(-d1(i+2-N) + d1(i))/2.0));
+                              + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
 
       i = N-1;
       // real
       lis_csr_set_value(A, 2*i, (2*i)+3-(2*N),
                         alpha*(fps2[1]*(d2(i+1-N) + d2(i))/2.0
-                               + fps1[2]*(-d1(i+1-N) + d1(i))/2.0));
+                               + fps1[2]*(d1(i+1-N) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i, (2*i)+5-(2*N),
                         alpha*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                               + fps1[3]*(-d1(i+2-N) + d1(i))/2.0));
+                               + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)+1-(2*N),
                         beta*(fps2[1]*(d2(i+1-N) + d2(i))/2.0
-                              + fps1[2]*(-d1(i+1-N) + d1(i))/2.0));
+                              + fps1[2]*(d1(i+1-N) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3-(2*N),
                         beta*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                              + fps1[3]*(-d1(i+2-N) + d1(i))/2.0));
+                              + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
     }
 
     for (int i = 0; i < 2*N; i++) {
@@ -634,126 +639,126 @@ namespace RT_Solver
                              + d0(0)));
     lis_csr_set_value(A, 0, 0+3,
                       alpha*(fps2[1]*(d2(0+1) + d2(0))/2.0
-                             + fps1[2]*(-d1(0+1) + d1(0))/2.0));
+                             + fps1[2]*(d1(0+1) + d1(0))/2.0));
     lis_csr_set_value(A, 0, 0+5,
                       alpha*(fps2[0]*(d2(0+2) + d2(0))/2.0
-                             + fps1[3]*(-d1(0+2) + d1(0))/2.0));
+                             + fps1[3]*(d1(0+2) + d1(0))/2.0));
     // imag
     lis_csr_set_value(A, 1, 1-1,
                       beta*(fps2[2]*d2(0)
                             + d0(0)));
     lis_csr_set_value(A, 1, 1+1,
                       beta*(fps2[1]*(d2(0+1) + d2(0))/2.0
-                            + fps1[2]*(-d1(0+1) + d1(0))/2.0));
+                            + fps1[2]*(d1(0+1) + d1(0))/2.0));
     lis_csr_set_value(A, 1, 1+3,
                       beta*(fps2[0]*(d2(0+2) + d2(0))/2.0
-                            + fps1[3]*(-d1(0+2) + d1(0))/2.0));
+                            + fps1[3]*(d1(0+2) + d1(0))/2.0));
     // real
     lis_csr_set_value(A, 2, 2-1,
                       alpha*(fps2[1]*(d2(1-1) + d2(1))/2.0
-                             + fps1[1]*(-d1(1-1) + d1(1))/2.0));
+                             + fps1[1]*(d1(1-1) + d1(1))/2.0));
     lis_csr_set_value(A, 2, 2+1,
                       alpha*(fps2[2]*d2(1)
                              + d0(1)));
     lis_csr_set_value(A, 2, 2+3,
                       alpha*(fps2[1]*(d2(1+1) + d2(1))/2.0
-                             + fps1[2]*(-d1(1+1) + d1(1))/2.0));
+                             + fps1[2]*(d1(1+1) + d1(1))/2.0));
     lis_csr_set_value(A, 2, 2+5,
                       alpha*(fps2[0]*(d2(1+2) + d2(1))/2.0
-                             + fps1[3]*(-d1(1+2) + d1(1))/2.0));
+                             + fps1[3]*(d1(1+2) + d1(1))/2.0));
     // imag
     lis_csr_set_value(A, 3, 3-3,
                       beta*(fps2[1]*(d2(1-1) + d2(1))/2.0
-                            + fps1[1]*(-d1(1-1) + d1(1))/2.0));
+                            + fps1[1]*(d1(1-1) + d1(1))/2.0));
     lis_csr_set_value(A, 3, 3-1,
                       beta*(fps2[2]*d2(1)
                             + d0(1)));
     lis_csr_set_value(A, 3, 3+1,
                       beta*(fps2[1]*(d2(1+1) + d2(1))/2.0
-                            + fps1[2]*(-d1(1+1) + d1(1))/2.0));
+                            + fps1[2]*(d1(1+1) + d1(1))/2.0));
     lis_csr_set_value(A, 3, 3+3,
                       beta*(fps2[0]*(d2(1+2) + d2(1))/2.0
-                            + fps1[3]*(-d1(1+2) + d1(1))/2.0));
+                            + fps1[3]*(d1(1+2) + d1(1))/2.0));
 
     #pragma omp parallel for
     for (int i = 2; i < (N-2); i++) {
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3,
                         alpha*(fps2[0]*(d2(i-2) + d2(i))/2.0
-                               + fps1[0]*(-d1(i-2) + d1(i))/2.0));
+                               + fps1[0]*(d1(i-2) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i, (2*i)-1,
                         alpha*(fps2[1]*(d2(i-1) + d2(i))/2.0
-                               + fps1[1]*(-d1(i-1) + d1(i))/2.0));
+                               + fps1[1]*(d1(i-1) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i, (2*i)+1,
                         alpha*(fps2[2]*d2(i)
                                + d0(i)));
       lis_csr_set_value(A, 2*i, (2*i)+3,
-                        alpha*(fps2[1]*(d2(i+1) + d2(i))/2.0
-                               + fps1[2]*(-d1(i+1) + d1(i))/2.0));
+                        alpha*(fps2[3]*(d2(i+1) + d2(i))/2.0
+                               + fps1[3]*(d1(i+1) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i, (2*i)+5,
-                        alpha*(fps2[0]*(d2(i+2) + d2(i))/2.0
-                               + fps1[3]*(-d1(i+2) + d1(i))/2.0));
+                        alpha*(fps2[4]*(d2(i+2) + d2(i))/2.0
+                               + fps1[4]*(d1(i+2) + d1(i))/2.0));
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5,
                         beta*(fps2[0]*(d2(i-2) + d2(i))/2.0
-                              + fps1[0]*(-d1(i-2) + d1(i))/2.0));
+                              + fps1[0]*(d1(i-2) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i+1, (2*i+1)-3,
                         beta*(fps2[1]*(d2(i-1) + d2(i))/2.0
-                              + fps1[1]*(-d1(i-1) + d1(i))/2.0));
+                              + fps1[1]*(d1(i-1) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i+1, (2*i+1)-1,
                         beta*(fps2[2]*d2(i)
                               + d0(i)));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+1,
-                        beta*(fps2[1]*(d2(i+1) + d2(i))/2.0
-                              + fps1[2]*(-d1(i+1) + d1(i))/2.0));
+                        beta*(fps2[3]*(d2(i+1) + d2(i))/2.0
+                              + fps1[3]*(d1(i+1) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3,
-                        beta*(fps2[0]*(d2(i+2) + d2(i))/2.0
-                              + fps1[3]*(-d1(i+2) + d1(i))/2.0));
+                        beta*(fps2[4]*(d2(i+2) + d2(i))/2.0
+                              + fps1[4]*(d1(i+2) + d1(i))/2.0));
     }
 
     // real
     lis_csr_set_value(A, (2*(N-2)), (2*(N-2))-3,
                       alpha*(fps2[0]*(d2((N-2)-2) + d2((N-2)))/2.0
-                             + fps1[0]*(-d1((N-2)-2) + d1((N-2)))/2.0));
+                             + fps1[0]*(d1((N-2)-2) + d1((N-2)))/2.0));
     lis_csr_set_value(A, (2*(N-2)), (2*(N-2))-1,
                       alpha*(fps2[1]*(d2((N-2)-1) + d2((N-2)))/2.0
-                             + fps1[1]*(-d1((N-2)-1) + d1((N-2)))/2.0));
+                             + fps1[1]*(d1((N-2)-1) + d1((N-2)))/2.0));
     lis_csr_set_value(A, (2*(N-2)), (2*(N-2))+1,
                       alpha*(fps2[2]*d2(N-2)
                              + d0(N-2)));
     lis_csr_set_value(A, (2*(N-2)), (2*(N-2))+3,
                       alpha*(fps2[1]*(d2(N-2+1) + d2(N-2))/2.0
-                             + fps1[2]*(-d1(N-2+1) + d1(N-2))/2.0));
+                             + fps1[2]*(d1(N-2+1) + d1(N-2))/2.0));
     // imag
     lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)-5,
                       beta*(fps2[0]*(d2(N-2-2) + d2(N-2))/2.0
-                            + fps1[0]*(-d1(N-2-2) + d1(N-2))/2.0));
+                            + fps1[0]*(d1(N-2-2) + d1(N-2))/2.0));
     lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)-3,
                       beta*(fps2[1]*(d2(N-2-2) + d2(N-2))/2.0
-                            + fps1[1]*(-d1(N-2-2) + d1(N-2))/2.0));
+                            + fps1[1]*(d1(N-2-2) + d1(N-2))/2.0));
     lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)-1,
                       beta*(fps2[2]*d2(N-2)
                             + d0(N-2)));
     lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)+1,
                       beta*(fps2[1]*(d2(N-2+1) + d2(N-2))/2.0
-                            + fps1[2]*(-d1(N-2+1) + d1(N-2))/2.0));
+                            + fps1[2]*(d1(N-2+1) + d1(N-2))/2.0));
     // real
     lis_csr_set_value(A, (2*(N-1)), (2*(N-1))-3,
                       alpha*(fps2[0]*(d2(N-1-2) + d2(N-1))/2.0
-                             + fps1[0]*(-d1(N-1-2) + d1(N-1))/2.0));
+                             + fps1[0]*(d1(N-1-2) + d1(N-1))/2.0));
     lis_csr_set_value(A, (2*(N-1)), (2*(N-1))-1,
                       alpha*(fps2[1]*(d2(N-1-1) + d2(N-1))/2.0
-                             + fps1[1]*(-d1(N-1-1) + d1(N-1))/2.0));
+                             + fps1[1]*(d1(N-1-1) + d1(N-1))/2.0));
     lis_csr_set_value(A, (2*(N-1)), (2*(N-1))+1,
                       alpha*(fps2[2]*d2(N-1)
                              + d0(N-1)));
     // imag
     lis_csr_set_value(A, (2*(N-1)+1), (2*(N-1)+1)-5,
                       beta*(fps2[0]*(d2(N-1-2) + d2(N-1))/2.0
-                            + fps1[0]*(-d1(N-1-2) + d1(N-1))/2.0));
+                            + fps1[0]*(d1(N-1-2) + d1(N-1))/2.0));
     lis_csr_set_value(A, (2*(N-1)+1), (2*(N-1)+1)-3,
                       beta*(fps2[1]*(d2(N-1-1) + d2(N-1))/2.0
-                            + fps1[1]*(-d1(N-1-1) + d1(N-1))/2.0));
+                            + fps1[1]*(d1(N-1-1) + d1(N-1))/2.0));
     lis_csr_set_value(A, (2*(N-1)+1), (2*(N-1)+1)-1,
                       beta*(fps2[2]*d2(N-1)
                             + d0(N-1)));
