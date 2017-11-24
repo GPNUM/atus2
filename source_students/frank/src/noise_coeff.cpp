@@ -36,25 +36,27 @@
 #include "ParameterHandler.h"
 #include "rft_1d.h"
 
+using namespace std;
+
 int main(int argc, char *argv[])
 {
   if( argc < 2 )
     {
-      printf( "No signal binary file specified.\n" );
+      cout << "No signal binary file specified." << endl;
       return EXIT_FAILURE;
     }
 
   generic_header header;
   ifstream fsignal(argv[1], ifstream::binary );
   if (fsignal.fail()) {
-    std::cout << "File not found: " << argv[1] << std::endl;
-    abort();
+    cout << "File not found: " << argv[1] << endl;
+    exit(EXIT_FAILURE);
   }
   fsignal.read( (char*)&header, sizeof(generic_header));
   long NT = header.nDimX;
   long NX = header.nDimY;
 
-  std::cout << NT << "\t" << NX << "\t" << std::endl;
+  cout << NT << "\t" << NX << "\t" << endl;
 
   generic_header ft_header = header;
   ft_header.nDims = 1;
@@ -115,7 +117,7 @@ int main(int argc, char *argv[])
   if (argc > 2) {
     noise_strength = atof(argv[2]);
   }
-  std::cout << "Noise Strength: " << noise_strength << std::endl;
+  cout << "Noise Strength: " << noise_strength << endl;
   for (int64_t i = 0; i < NT; i++) {
     fsignal.read( (char*)noise, sizeof(double)*NX );
     for (int64_t j = 0; j < NX; j++) {
@@ -145,7 +147,6 @@ int main(int argc, char *argv[])
       out[j] = d0_new(j);
     }
     of_d0_new.write( bin_signal, NX*sizeof(double) );
-
   }
 
 }

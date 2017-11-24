@@ -38,12 +38,14 @@
 #include "noise3_2d.h"
 #include "ParameterHandler.h"
 
+using namespace std;
+
 int main(int argc, char *argv[])
 {
 
   if( argc < 2 )
     {
-      printf( "No signal binary file specified.\n" );
+      cout << "No signal binary file specified." << endl;
       return EXIT_FAILURE;
     }
 

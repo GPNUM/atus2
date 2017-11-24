@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
   ifstream fdata(argv[1], ifstream::binary );
   if (fdata.fail()) {
     cout << "File not found: " << argv[1] << endl;
-    abort();
+    exit(EXIT_FAILURE);
   }
   fdata.read( (char*)&header, sizeof(generic_header));
 

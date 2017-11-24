@@ -41,54 +41,54 @@ using namespace std;
 int main(int argc, char *argv[])
 {
   if ( argc < 3) {
-    printf("Arguments missing.\n Call: diff_data data1.bin data2.bin");
+    cout << "Arguments missing.\n Call: " << argv[0] << " data1.bin data2.bin" << endl;
     return EXIT_FAILURE;
   }
 
   generic_header header1, header2;
   ifstream fdata1(argv[1], ifstream::binary);
   if (fdata1.fail()) {
-    std::cout << "File not found: " << argv[1] << std::endl;
-    abort();
+    cout << "File not found: " << argv[1] << endl;
+    exit(EXIT_FAILURE);
   }
 
   ifstream fdata2(argv[2], ifstream::binary);
   if (fdata1.fail()) {
-    std::cout << "File not found: " << argv[2] << std::endl;
-    abort();
+    cout << "File not found: " << argv[2] << endl;
+    exit(EXIT_FAILURE);
   }
 
   fdata1.read((char*)&header1, sizeof(generic_header));
   fdata2.read((char*)&header2, sizeof(generic_header));
 
   if (header1.nDims != header2.nDims) {
-    printf("nDims not equal size: %lld != %lld \n", header1.nDims, header2.nDims);
-    abort();
+    cout << "nDims not equal size: " << header1.nDims << " != " << header2.nDims << endl;
+    exit(EXIT_FAILURE);
   }
   if (header1.nDimX != header2.nDimX) {
-    printf("nDimX not equal size: %i != %i \n", header1.nDimX, header2.nDimX);
-    abort();
+    cout << "nDimX not equal size: " << header1.nDimX << " != " << header2.nDimX << endl;
+    exit(EXIT_FAILURE);
   }
   if (header1.nDimY != header2.nDimY) {
-    printf("nDimY not equal size: %i != %i \n", header1.nDimY, header2.nDimY);
-    abort();
+    cout << "nDimY not equal size: " << header1.nDimY << " != " << header2.nDimY << endl;
+    exit(EXIT_FAILURE);
   }
   if (header1.nDimZ != header2.nDimZ) {
-    printf("nDimZ not equal size: %i != %i \n", header1.nDimZ, header2.nDimZ);
-    abort();
+    cout << "nDimZ not equal size: " << header1.nDimZ << " != " << header2.nDimZ << endl;
+    exit(EXIT_FAILURE);
   }
 
   int64_t nDimXYZ = header1.nDimX*header1.nDimY*header1.nDimZ;
   fftw_complex *data1, *data2;
   data1 = fftw_alloc_complex(nDimXYZ);
   if (data1 == nullptr) {
-    printf("Allocation failed. Size wanted: %lld \n", sizeof(fftw_complex)*nDimXYZ);
-    abort();
+    cout << "Allocation failed. Size wanted: " << sizeof(fftw_complex)*nDimXYZ << endl;
+    exit(EXIT_FAILURE);
   }
   data2 = fftw_alloc_complex(nDimXYZ);
   if (data2 == nullptr) {
-    printf("Allocation failed. Size wanted: %lld \n", sizeof(fftw_complex)*nDimXYZ);
-    abort();
+    cout << "Allocation failed. Size wanted: " << sizeof(fftw_complex)*nDimXYZ << endl;
+    exit(EXIT_FAILURE);
   }
 
   fdata1.read( (char*)data1, sizeof(fftw_complex)*nDimXYZ );
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
   foutput.write(reinterpret_cast<char*>(data1), sizeof(fftw_complex)*nDimXYZ);
   foutput.close();
 
-  printf("diff.bin written.\n");
+  cout << "diff.bin written." << endl;
   fdata1.close();
   fdata2.close();
   fftw_free(data1);

@@ -36,19 +36,21 @@
 #include "ParameterHandler.h"
 #include "fftw3.h"
 
+using namespace std;
+
 int main(int argc, char *argv[])
 {
   if( argc < 3 )
     {
-      printf( "Try: integrate_noise noise.bin d0_new.bin [NT] \n" );
+      cout <<  "Try: " << argv[0] << " noise.bin d0_new.bin [NT]" << endl;
       return EXIT_FAILURE;
     }
 
   generic_header header;
   ifstream fnoise(argv[1], ifstream::binary );
   if (fnoise.fail()) {
-    std::cout << "File not found: " << argv[1] << std::endl;
-    abort();
+    cout << "File not found: " << argv[1] << endl;
+    exit(EXIT_FAILURE);
   }
   fnoise.read( (char*)&header, sizeof(generic_header));
   int64_t NX = header.nDimX;
@@ -60,27 +62,27 @@ int main(int argc, char *argv[])
     NX = atoi(argv[3])/dt/2;
   }
   double t = atof(argv[3]);
-  std::cout << "t: " << t << std::endl;
-  std::cout << "NX = " << NX << std::endl;
+  cout << "t: " << t << endl;
+  cout << "NX = " << NX << endl;
   assert (NX <= header.nDimX);
 
   int blocksize = 1024;
   if ((NX % blocksize) != 0) {
-    std::cout << "Warning: Bad Blocksize: " << NX << " " << blocksize << std::endl;
+    cout << "Warning: Bad Blocksize: " << NX << " " << blocksize << endl;
     if ((NX % 1000) == 0) {
       blocksize = 1000;
     } else {
       blocksize = 100;
     }
   }
-  std::cout << "Using: " << blocksize << std::endl;
+  cout << "Using: " << blocksize << endl;
 
   if ((NX % blocksize) != 0) {
-    std::cout << "Still Bad Blocksize!" << std::endl;
+    cout << "Still Bad Blocksize!" << endl;
   }
 
   int64_t blocks = NX/blocksize;
-  std::cout << "Blocks " << blocks << std::endl;
+  cout << "Blocks " << blocks << endl;
 
   double *noise;
   noise = new double[ blocksize * NY ];
@@ -104,7 +106,7 @@ int main(int argc, char *argv[])
       total += integrated_noise[i]*header.dy*header.dx;
     }
     total *= header.dx;
-    ftotal << block << "\t" << total << "\t" << integrated_noise[NY/2]*header.dx << std::endl;
+    ftotal << block << "\t" << total << "\t" << integrated_noise[NY/2]*header.dx << endl;
 
   }
 
@@ -117,12 +119,12 @@ int main(int argc, char *argv[])
     total += integrated_noise[i];
   }
   total *= header.dy;
-  std::cout << "Total\t" << total << std::endl;
+  cout << "Total\t" << total << endl;
 
   ifstream fd0_new(argv[2], ifstream::binary );
   if (fd0_new.fail()) {
-    std::cout << "File not found: " << argv[2] << std::endl;
-    abort();
+    cout << "File not found: " << argv[2] << endl;
+    exit(EXIT_FAILURE);
   }
   fd0_new.seekg(sizeof(generic_header));
   double *d0_new;
@@ -147,7 +149,7 @@ int main(int argc, char *argv[])
       total_d0_new += integrated_d0_new[i];
     }
     total_d0_new *= header.dx;
-    ftotal_d0_new << block << "\t" << total_d0_new << std::endl;
+    ftotal_d0_new << block << "\t" << total_d0_new << endl;
 
   }
 
@@ -160,17 +162,17 @@ int main(int argc, char *argv[])
     total_d0_new += integrated_d0_new[i];
   }
   total_d0_new *= header.dy;
-  std::cout << "Total_D0_New\t" << total_d0_new << std::endl;
+  cout << "Total_D0_New\t" << total_d0_new << endl;
 
   ifstream fd2(argv[4], ifstream::binary);
   ifstream fd1(argv[5], ifstream::binary);
   if (fd2.fail()) {
-    std::cout << "File not found: " << argv[4] << std::endl;
-    abort();
+    cout << "File not found: " << argv[4] << endl;
+    exit(EXIT_FAILURE);
   }
   if (fd1.fail()) {
-    std::cout << "File not found: " << argv[5] << std::endl;
-    abort();
+    cout << "File not found: " << argv[5] << endl;
+    exit(EXIT_FAILURE);
   }
   double *d2 = new double[NY];
   double *d1 = new double[NY];
@@ -191,8 +193,8 @@ int main(int argc, char *argv[])
   for (int64_t i = 0; i < NY; ++i) {
     garg += -d1[i]/(2*(1-d2[i]));
   }
-  std::cout << "Garg: " << garg << " G: " << exp(garg) << std::endl;
-  std::cout << "Sigma: " << sigma << std::endl;
+  cout << "Garg: " << garg << " G: " << exp(garg) << endl;
+  cout << "Sigma: " << sigma << endl;
 
 
   double alpha = 0.000365;
@@ -242,7 +244,7 @@ int main(int argc, char *argv[])
   }
 
   char* bin_header = reinterpret_cast<char*>(&header);
-  std::string foo = string(argv[1]);
+  string foo = string(argv[1]);
   ofstream file1( "int_"+foo, ofstream::binary );
   file1.write( bin_header, sizeof(generic_header) );
   char* bin_noise;

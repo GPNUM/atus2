@@ -35,21 +35,24 @@
 #include "noise3_2d.h"
 #include "ParameterHandler.h"
 
+using namespace std;
+
 int main(int argc, char *argv[])
 {
   if( argc < 2 )
   {
-    printf( "No Number specified.\n" );
+    cout <<  "No Number specified." << endl;
     return EXIT_FAILURE;
   }
 
   int no_of_threads = 4;
   char* envstr = getenv( "MY_NO_OF_THREADS" );
+
   if( envstr != NULL ) no_of_threads = atoi( envstr );
-  printf("Number of threads %i\n", no_of_threads);
+  cout << "Number of threads " << no_of_threads << endl;
 
   omp_set_num_threads( no_of_threads );
-  std::ofstream fout("foo.out");
+  ofstream fout("foo.out");
   char foo[1000];
   int N = stoi(argv[1]);
   int dn = 100;
@@ -58,12 +61,12 @@ int main(int argc, char *argv[])
   }
   for (int j = 1; j <= N; j++) {
     sprintf(foo, "%i.000_1.bin", j*dn);
-    std::cout << foo << std::endl;
+    cout << foo << endl;
     generic_header header;
-    std::ifstream fdata(foo, ifstream::binary );
+    ifstream fdata(foo, ifstream::binary );
     if (fdata.fail()) {
-      std::cout << "File not found: " << foo << std::endl;
-      abort();
+      cout << "File not found: " << foo << endl;
+      exit(EXIT_FAILURE);
     }
     fdata.read( (char*)&header, sizeof(generic_header));
 
@@ -103,7 +106,7 @@ int main(int argc, char *argv[])
       }
     }
 
-    fout << j*dn << "\t" << integral << "\t" << abs(xleft-integral) << "\t" << abs(xright-integral) << std::endl;
+    fout << j*dn << "\t" << integral << "\t" << abs(xleft-integral) << "\t" << abs(xright-integral) << endl;
 
   }
 

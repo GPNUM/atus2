@@ -36,12 +36,14 @@
 #include "rft_1d.h"
 #include "ParameterHandler.h"
 
+using namespace std;
+
 int main(int argc, char *argv[])
 {
 
   if( argc < 2 )
   {
-    printf( "No Chirp file specified.\n" );
+    cout << "No Chirp file specified." << endl;
     return EXIT_FAILURE;
   }
 
@@ -49,8 +51,8 @@ int main(int argc, char *argv[])
   double garbage;
   ifstream fdata_count(argv[1]);
   if (fdata_count.fail()) {
-    std::cout << "File not found: " << argv[1] << std::endl;
-    abort();
+    cout << "File not found: " << argv[1] << endl;
+    exit(EXIT_FAILURE);
   }
   int count =0;
   getline(fdata_count, sgarbage);
@@ -70,7 +72,7 @@ int main(int argc, char *argv[])
   header.xMax = 2.0*M_PI-header.dx;
   header.dkx = 1;
 
-  std::cout << header.nDimX << std::endl;
+  cout << header.nDimX << endl;
   double expansion = 100.0;
   header_interpol = header;
   header_interpol.nDimX *= expansion;
@@ -82,15 +84,15 @@ int main(int argc, char *argv[])
 
   ifstream fdata(argv[1]);
   if (fdata.fail()) {
-    std::cout << "File not found: " << argv[1] << std::endl;
-    abort();
+    cout << "File not found: " << argv[1] << endl;
+    exit(EXIT_FAILURE);
   }
   getline(fdata, sgarbage);
   for (int i = 0; i < header.nDimX; i++) {
     fdata >> garbage;
     fdata >> garbage;
     fdata >> data[i];
-    std::cout << data[i] << std::endl;
+    cout << data[i] << endl;
     fdata >> garbage;
     fdata >> garbage;
   }
@@ -112,11 +114,11 @@ int main(int argc, char *argv[])
 
   ofstream file1("Chirp_interpol.txt");
   if (file1.fail()) {
-    std::cout << "Error opening file: " << "Chirp_interpol.txt" << std::endl;
-    abort();
+    cout << "Error opening file: " << "Chirp_interpol.txt" << endl;
+    exit(EXIT_FAILURE);
   }
   for (int i = 0; i < interpol_ft.Get_Dim_X(); i++) {
-    file1 << header_interpol.xMin+header_interpol.dx*i << "\t" << interpolft_in[i] << std::endl;
+    file1 << header_interpol.xMin+header_interpol.dx*i << "\t" << interpolft_in[i] << endl;
   }
 
 }
