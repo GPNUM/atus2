@@ -59,8 +59,7 @@
 (defun tar-extract (file)
   (run (format nil "tar xfz ~a" file)))
 (defun remove-tgz-filetype (file)
-  (subseq file 0 (or (search ".tar.gz" file)
-                     (search ".tgz" file))))
+  (subseq file 0 (or (search ".tar.gz" file) (search ".tgz" file) (search ".zip" file))))
 (defun make (&key threads arg)
   (run (format nil "make~@[ -j ~a~]~@[ ~a~]" threads arg)))
 (defun pathname-type= (pathspec type)
@@ -162,8 +161,11 @@ Otherwise returns nil. Test is done via equal."
            *packages*)))
 
 (define-software openmpi
-    :version "2.1.1"
-    :url "https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.1.tar.gz")
+    :version "3.0.0"
+    :url "https://www.open-mpi.org/software/ompi/v3.0/downloads/openmpi-3.0.0.tar.gz")
+(define-software hdf5
+    :version "1.10.1"
+    :url "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/hdf5-1.10.1.tar.gz")
 (define-software gsl
     :version "2.4"
     :url "ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz")
@@ -171,14 +173,14 @@ Otherwise returns nil. Test is done via equal."
     :version "2.2.5"
     :url "https://codeload.github.com/beltoforion/muparser/tar.gz/v2.2.5")
 (define-software fftw
-    :version "3.3.6-pl2"
-    :url "http://fftw.org/fftw-3.3.6-pl2.tar.gz")
+    :version "3.3.7"
+    :url "http://fftw.org/fftw-3.3.7.tar.gz")
 (define-software vtk
-    :version "7.1.0"
-    :url "http://www.vtk.org/files/release/7.1/VTK-7.1.0.tar.gz")
+    :version "8.0.1"
+    :url "http://www.vtk.org/files/release/8.0/VTK-8.0.1.tar.gz")
 (define-software lis
-    :version "1.7.29"
-    :url "http://www.ssisc.org/lis/dl/lis-1.7.29.tar.gz")
+    :version "2.0.4"
+    :url "http://www.ssisc.org/lis/dl/lis-2.0.4.zip")
 (define-software atus2
     :version "git")
 (setf *packages* (reverse *packages*))
@@ -186,7 +188,7 @@ Otherwise returns nil. Test is done via equal."
 (defmethod fetch ((sw software))
   (with-slots (name version url) sw
     (download url)
-    (run (format nil "tar xfz ~a" (file-namestring url)))))
+    (if (search ".zip" url) (run (format nil "unzip ~a" (file-namestring url))) (run (format nil "tar xfz ~a" (file-namestring url))))))
 
 (defmethod install-module ((sw software))
   (%install-module sw))
@@ -212,6 +214,17 @@ Otherwise returns nil. Test is done via equal."
       (sb-posix:setenv "CC" "mpicc" 1)
       (sb-posix:setenv "CXX" "mpic++" 1)
       (sb-posix:setenv "FC" "mpif90" 1))))
+
+;; hdf5
+(defmethod install ((sw hdf5))
+  "Install method for hdf5"
+  (with-slots (full-name url) sw
+    (uiop:with-current-directory ((uiop:ensure-directory-pathname (remove-tgz-filetype (file-namestring url))))
+      (run (format nil "./configure --enable-build-mode=production --enable-cxx --enable-optimization=high --prefix=~a~a" *install-dir* full-name))
+      (run "make clean")
+      (run (format nil "make ~@[-j ~a~]" *make-threads*))
+      (run "make install")
+      (export-variables full-name))))
 
 ;; gsl
 (defmethod install ((sw gsl))
