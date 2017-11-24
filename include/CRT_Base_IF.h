@@ -659,7 +659,7 @@ void CRT_Base_IF<T,dim,no_int_states>::run_sequence()
   }
   catch (const std::out_of_range &oor)
   {
-    std::cerr << "Critical Error: Invalid fct ptr to ft_half_step or ft_full_step ()" << oor.what() << ')\n';
+    std::cerr << "Critical Error: Invalid fct ptr to ft_half_step or ft_full_step ()" << oor.what() << ")\n";
     exit(EXIT_FAILURE);
   }
 
@@ -733,7 +733,7 @@ void CRT_Base_IF<T,dim,no_int_states>::run_sequence()
     }
     catch (const std::out_of_range &oor)
     {
-      std::cerr << "Critical Error: Invalid squence name " << seq.name << "\n(" << oor.what() << ')\n';
+      std::cerr << "Critical Error: Invalid squence name " << seq.name << "\n(" << oor.what() << ")\n";
       exit(EXIT_FAILURE);
     }
 
