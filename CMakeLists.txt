@@ -15,7 +15,7 @@ find_package(Doxygen)
 set(CMAKE_CXX_FLAGS_RELEASE "-std=gnu++14 -march=native -O3 -funroll-loops -ftree-vectorize -fopenmp -w -s -Wall")
 #set(CMAKE_CXX_FLAGS_DEBUG "-std=gnu++14 -g -Wall -Wextra -fopenmp -fsanitize=thread")
 #set(CMAKE_CXX_FLAGS_DEBUG "-std=gnu++14 -g -Wall -Wextra -fopenmp -fsanitize=address")
-set(CMAKE_CXX_FLAGS_DEBUG "-std=gnu++14 -g -Wall -Wextra -fopenmp")
+set(CMAKE_CXX_FLAGS_DEBUG "-std=gnu++14 -g -Wall -Wextra -fopenmp -Wno-unused-parameter -Wno-unused-variable -Wno-unused-but-set-variable")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release." FORCE)
@@ -99,7 +99,8 @@ set( LIBRARY_OUTPUT_PATH  ${HOME}/bin/lib )
 
 # Zuerst die Pfade angeben
 #=========================
-include_directories( ${MPI_CXX_INCLUDE_PATH} ${Boost_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${DIR_INC} ${DIR_MYLIB} ${DIR_MYLIB_MPI}/src_mpi ${GSL_INC_DIR} ${FFTW_INC_DIR} ${MUPARSER_INC_DIR} )
+include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH} ${Boost_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS}  ${GSL_INC_DIR} ${FFTW_INC_DIR} ${MUPARSER_INC_DIR} )
+include_directories( ${DIR_INC} ${DIR_MYLIB} ${DIR_MYLIB_MPI}/src_mpi )
 #LINK_DIRECTORIES( ${GSL_LIB_DIR} ${FFTW_LIB_DIR} )
 
 # enable profiling
