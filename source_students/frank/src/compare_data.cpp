@@ -41,64 +41,64 @@ using namespace std;
 int main(int argc, char *argv[])
 {
   if ( argc < 3) {
-    std::cout << "Error: Arguments missing.\n Try: " << argv[0] << " data1.bin data2.bin" << std::endl;
+    cout << "Error: Arguments missing.\n Try: " << argv[0] << " data1.bin data2.bin" << endl;
     return EXIT_FAILURE;
   }
 
   generic_header header1, header2;
   ifstream fdata1(argv[1], ifstream::binary);
   if (fdata1.fail()) {
-    std::cout << "File not found: " << argv[1] << std::endl;
-    abort();
+    cout << "File not found: " << argv[1] << endl;
+    exit(EXIT_FAILURE);
   }
 
   ifstream fdata2(argv[2], ifstream::binary);
   if (fdata2.fail()) {
-    std::cout << "File not found: " << argv[2] << std::endl;
-    abort();
+    cout << "File not found: " << argv[2] << endl;
+    exit(EXIT_FAILURE);
   }
 
   fdata1.read((char*)&header1, sizeof(generic_header));
   fdata2.read((char*)&header2, sizeof(generic_header));
 
   if (header1.nDims != 1) {
-    std::cout << "nDims > 1 not yet implemented...\n";
-    abort();
+    cout << "nDims > 1 not yet implemented...\n";
+    exit(EXIT_FAILURE);
   }
   if (header1.nDims != header2.nDims) {
-    std::cout << "nDims not equal size: " << header1.nDims << " != "
-              << header2.nDims << std::endl;
-    abort();
+    cout << "nDims not equal size: " << header1.nDims << " != "
+              << header2.nDims << endl;
+    exit(EXIT_FAILURE);
   }
   if (header1.nDimX != header2.nDimX) {
-    std::cout << "nDimX not equal size: " << header1.nDimX << " != "
-              << header2.nDimX << std::endl;
-    abort();
+    cout << "nDimX not equal size: " << header1.nDimX << " != "
+              << header2.nDimX << endl;
+    exit(EXIT_FAILURE);
   }
   if (header1.nDimY != header2.nDimY) {
-    std::cout << "nDimY not equal size: " << header1.nDimY << " != "
-              << header2.nDimY << std::endl;
-    abort();
+    cout << "nDimY not equal size: " << header1.nDimY << " != "
+              << header2.nDimY << endl;
+    exit(EXIT_FAILURE);
   }
   if (header1.nDimZ != header2.nDimZ) {
-    std::cout << "nDimZ not equal size: " << header1.nDimZ << " != "
-              << header2.nDimZ << std::endl;
-    abort();
+    cout << "nDimZ not equal size: " << header1.nDimZ << " != "
+              << header2.nDimZ << endl;
+    exit(EXIT_FAILURE);
   }
 
   int64_t nDimXYZ = header1.nDimX*header1.nDimY*header1.nDimZ;
   fftw_complex *data1, *data2;
   data1 = fftw_alloc_complex(nDimXYZ);
   if (data1 == nullptr) {
-    std::cout << "Allocation failed. Size wanted: " << sizeof(fftw_complex)*nDimXYZ
-              << std::endl;
-    abort();
+    cout << "Allocation failed. Size wanted: " << sizeof(fftw_complex)*nDimXYZ
+              << endl;
+    exit(EXIT_FAILURE);
   }
   data2 = fftw_alloc_complex(nDimXYZ);
   if (data2 == nullptr) {
-    std::cout << "Allocation failed. Size wanted: " << sizeof(fftw_complex)*nDimXYZ
-              << std::endl;
-    abort();
+    cout << "Allocation failed. Size wanted: " << sizeof(fftw_complex)*nDimXYZ
+              << endl;
+    exit(EXIT_FAILURE);
   }
 
   fdata1.read( (char*)data1, sizeof(fftw_complex)*nDimXYZ );
@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
     }
   }
   if (max_diff > min_err) {
-    std::cout << "Not equal! (diff > " << min_err << ")" << std::endl;
-    std::cout << "max_i = " << max_i << " max_diff: " << max_diff << std::endl;
+    cout << "Not equal! (diff > " << min_err << ")" << endl;
+    cout << "max_i = " << max_i << " max_diff: " << max_diff << endl;
     return -1;
   }
 
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
   fftw_free(data1);
   fftw_free(data2);
 
-  std::cout << "Equal! (diff < " << min_err << ")" << std::endl;
-  std::cout << "max_i = " << max_i << " max_diff: " << max_diff << std::endl;
+  cout << "Equal! (diff < " << min_err << ")" << endl;
+  cout << "max_i = " << max_i << " max_diff: " << max_diff << endl;
   return 0;
 }

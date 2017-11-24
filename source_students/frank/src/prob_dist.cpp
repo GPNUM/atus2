@@ -35,79 +35,79 @@
 #include "noise3_2d.h"
 #include "ParameterHandler.h"
 
+using namespace std;
+
 int main(int argc, char *argv[])
 {
   if( argc < 2 )
     {
-      printf( "No parameter xml file specified.\n" );
+      cout << "Error: No data file specified." << endl;
+      cout << "Usage: " << argv[0] << " data.bin [N]" << endl;
       return EXIT_FAILURE;
     }
 
   int no_of_threads = 4;
   char* envstr = getenv( "MY_NO_OF_THREADS" );
   if( envstr != NULL ) no_of_threads = atoi( envstr );
-  printf("Number of threads %i\n", no_of_threads);
+  cout << "Number of threads: " << no_of_threads << endl;
 
   omp_set_num_threads( no_of_threads );
 
   generic_header header;
-  std::ifstream fdata(argv[1], ifstream::binary );
+  ifstream fdata(argv[1], ifstream::binary );
   if (fdata.fail()) {
-    std::cout << "File not found: " << argv[1] << std::endl;
+    cout << "File not found: " << argv[1] << endl;
     abort();
   }
   fdata.read( (char*)&header, sizeof(generic_header));
 
-  int N = 1000;
-  int prob_dist[N] = {};
-  double nMax = 1.0;
-  if (argc > 2) {
-    nMax = atof(argv[2]);
+  double *data = new double[header.nDimX*header.nDimY];
+  if (data == nullptr) {
+    exit(EXIT_FAILURE);
   }
-  double nMin = -nMax;
-  double dn = (nMax-nMin)/static_cast<double>(N);
-  std::cout << "nDimX \t" << header.nDimX << std::endl;
-  std::cout << "nDimY \t" << header.nDimY << std::endl;
-  printf("N %i\n", N);
-  printf("dn %f\n", dn);
-  printf("nMin %f\n", nMin);
-  printf("nMax %f\n", nMax);
+  fdata.read( (char*)data, sizeof(double)*header.nDimX*header.nDimY );
 
-  double *data_real;
-  fftw_complex *data_complex;
-  if (header.bComplex == 1) {
-    data_complex = new fftw_complex[header.nDimY];
-    for (int i = 0; i < header.nDimX; i++) {
-      fdata.read( (char*)data_complex, sizeof(fftw_complex)*header.nDimY );
-      for (int j = 0; j <header.nDimY; j++) {
-        prob_dist[static_cast<int>((data_complex[j][0]-nMin)/dn)] += 1;
-      }
+  int N = 1000;
+  if (argc > 2) {
+    N = atoi(argv[2]);
+  }
+  cout << "N: " << N << endl;
+
+  double max_val = 0.0;
+  #pragma omp parallel for reduction(max:max_val)
+  for (int64_t i = 0; i < header.nDimX*header.nDimY; ++i) {
+    if (abs(data[i]) > max_val) {
+      max_val = abs(data[i]);
     }
-  } else {
-    data_real = new double[header.nDimY];
-    if (data_real == nullptr) {
-      abort();
+  }
+
+  cout << "Maximum: " << max_val << endl;
+  double min_val = -max_val;
+  double dn = 2*max_val/N;
+
+  int64_t prob_dist[N] = {};
+
+  #pragma omp parallel
+  {
+    int64_t priv_prob_dist[N] = {};
+    #pragma omp for
+    for (int64_t i = 0; i < header.nDimX*header.nDimY; i++) {
+      priv_prob_dist[static_cast<int>((data[i]-min_val)/dn)] += 1;
     }
-    for (int i = 0; i < header.nDimX; i++) {
-      fdata.read( (char*)data_real, sizeof(double)*header.nDimY );
-      for (int j = 0; j < header.nDimY; j++) {
-        if ((fabs(data_real[j]) < nMax)) {
-          prob_dist[static_cast<int>((data_real[j]-nMin)/dn)] += 1;
-        }
+    #pragma omp critical
+    {
+      for (int64_t i = 0; i < N; ++i) {
+        prob_dist[i] += priv_prob_dist[i];
       }
     }
   }
 
   ofstream file1( "prob_dist.txt");
   for (int i = 0; i < N; i++) {
-    file1 << i*dn+nMin << "\t" << prob_dist[i]/static_cast<double>(header.nDimX*header.nDimY) << std::endl;
+    file1 << min_val+i*dn << "\t" << prob_dist[i]/static_cast<double>(header.nDimX*header.nDimY) << endl;
   }
   fdata.close();
 
-  if (header.bComplex) {
-    delete[] data_complex;
-  } else {
-    delete[] data_real;
-  }
+  delete[] data;
 
 }

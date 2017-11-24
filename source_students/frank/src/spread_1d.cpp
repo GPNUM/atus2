@@ -52,8 +52,12 @@ int main(int argc, char *argv[])
   std::ofstream fout("foo.out");
   char foo[1000];
   int N = stoi(argv[1]);
+  int dn = 100;
+  if (argc > 2) {
+    dn = atoi(argv[2]);
+  }
   for (int j = 1; j <= N; j++) {
-    sprintf(foo, "%i.000_1.bin", j*100);
+    sprintf(foo, "%i.000_1.bin", j*dn);
     std::cout << foo << std::endl;
     generic_header header;
     std::ifstream fdata(foo, ifstream::binary );
@@ -99,7 +103,7 @@ int main(int argc, char *argv[])
       }
     }
 
-    fout << j*100 << "\t" << integral << "\t" << abs(xleft-integral) << "\t" << abs(xright-integral) << std::endl;
+    fout << j*dn << "\t" << integral << "\t" << abs(xleft-integral) << "\t" << abs(xright-integral) << std::endl;
 
   }
 

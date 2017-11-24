@@ -95,18 +95,32 @@ int main(int argc, char *argv[])
                                 - 0.125 * (1.0 - m_noise[i])*pow(m_dx_noise[i], 2)
                                 / (1 + m_noise[i])); };
 
+//   auto d0_new = [&](int i){ return (d0(i) - pow(d1(i),2) /(4.0*d2(i)) - d1(i)*d2(i)/(2.0*m_dx_noise[i]) - (0.5*d2(i)*m_dx2_noise[i] - m_dx2_noise[i] - 0.5*pow(m_dx_noise[i],2))/2.0
+// );};
+  auto d0_new = [&](int i){ return (d0(i) + (1-m_noise[i])*(pow(0.5*m_dx_noise[i]/(1-m_noise[i]),2) - 0.5 * ((-m_dx2_noise[i] + 0.5*pow(m_dx_noise[i],2) + 0.5*(1-m_noise[i])*m_dx2_noise[i])/(1-m_noise[i]) + d1(i)/m_dx_noise[i])) - 0.5*pow(d1(i),2)/(1-m_noise[i]) );};
+
   char* bin_header = reinterpret_cast<char*>(&header);
 
   ofstream of_d1( "d1.bin", ofstream::binary );
   ofstream of_d0( "d0.bin", ofstream::binary );
+  ofstream of_d0_new( "d0_new.bin", ofstream::binary );
   of_d1.write( bin_header, sizeof(generic_header) );
   of_d0.write( bin_header, sizeof(generic_header) );
+  of_d0_new.write( bin_header, sizeof(generic_header) );
 
   char* bin_signal;
   bin_signal = reinterpret_cast<char*>(out.data());
 
+  double noise_strength = 0.5;
+  if (argc > 2) {
+    noise_strength = atof(argv[2]);
+  }
+  std::cout << "Noise Strength: " << noise_strength << std::endl;
   for (int64_t i = 0; i < NT; i++) {
     fsignal.read( (char*)noise, sizeof(double)*NX );
+    for (int64_t j = 0; j < NX; j++) {
+      noise[j] *= noise_strength;
+    }
     for (int64_t j = 0; j < NX; j++) {
       m_noise[j] = noise[j];
     }
@@ -126,6 +140,11 @@ int main(int argc, char *argv[])
       out[j] = d0(j);
     }
     of_d0.write( bin_signal, NX*sizeof(double) );
+
+    for (int64_t j = 0; j < NX; j++) {
+      out[j] = d0_new(j);
+    }
+    of_d0_new.write( bin_signal, NX*sizeof(double) );
 
   }
 
