@@ -39,13 +39,15 @@
 
 using namespace std;
 
+const int fak = 8;
+const int no_of_chunks = 64;
+
 int main(int argc, char *argv[])
 {
   if( argc < 2 )
     {
-      printf( "Too few arguments\n" );
-      printf( "Parameter xml file and (optional) wavefunction .bin needed.\n" );
-      printf( "eg. noise_gen params.xml [inf_0.000_1.bin] [seed] [no_of_threads]\n" );
+      cout << "Too few arguments\n"
+           << argv[0] << " params.xml [inf_0.000_1.bin] [seed] [no_of_threads]" << endl;
       return EXIT_FAILURE;
     }
 
@@ -56,30 +58,27 @@ int main(int argc, char *argv[])
 
   int64_t seed = time(nullptr);
   if (argc > 3) {
-    std::cout << "User provided Seed!" << std::endl;
+    cout << "User provided Seed!" << endl;
     seed = stol(argv[3]);
   }
-  std::cout << "Seed\t" << seed << std::endl;
-
-  const int fak = 8;
-  const int no_of_chunks = 64;
+  cout << "Seed: " << seed << endl;
 
   int no_of_threads = 4;
   char* envstr = getenv( "MY_NO_OF_THREADS" );
   if( envstr != NULL ) no_of_threads = atoi( envstr );
   if (argc > 4) {
-    std::cout << "User provided Number of Threads!" << std::endl;
+    cout << "User provided Number of Threads!" << endl;
     no_of_threads = stoi(argv[4]);
   }
-  printf("Number of threads %i\n", no_of_threads);
+  cout << "Number of threads: " << no_of_threads << endl;
 
   fftw_init_threads();
   fftw_plan_with_nthreads( no_of_threads );
   omp_set_num_threads( no_of_threads );
 
   ParameterHandler params(argv[1]); // XML file
-  double dt = 1000;
-  double duration = 0;
+  double dt = 1000.0;
+  double duration = 0.0;
   for (auto seq_item : params.m_sequence) {
     if( seq_item.name != "set_momentum" ) { // Ignore set momentum step
       if (seq_item.dt < dt) {
@@ -88,26 +87,28 @@ int main(int argc, char *argv[])
       duration += seq_item.duration.front();
     }
   }
-  printf("duration: %f\n", duration);
-  printf("dt: %f\n", dt);
+  cout << "Duration: " << duration << endl;
+  cout << "dt: " << dt;
   assert(dt > 0.0);
   assert(duration > 0.0);
-  int exp =ceil(log2(duration/dt));
-  printf("exp %i\n", exp);
+  int exponent = ceil(log2(duration/dt));
+  cout << "Exponent: " << exponent;
   duration = pow(2.0, ceil(log2(duration/dt)))*dt;
-  printf("new duration: %f\n", duration);
-  printf("lower duration: %f\n", pow(2.0, exp-1)*dt);
+  cout << "New Duration: " << duration << endl;
+  cout << "Lower Duration: " << pow(2.0, exponent-1)*dt << endl;
 
   generic_header header = {};
   {
     ifstream fheader(wavefun, ifstream::binary );
     if (fheader.fail()) {
-      std::cout << "File not found: " << wavefun << std::endl;
-      abort();
+      cout << "File not found: " << wavefun << endl;
+      exit(EXIT_FAILURE);
     }
     fheader.read( (char*)&header, sizeof(generic_header));
     fheader.close();
   }
+  assert(header.nDims > 0);
+  assert(header.nDimX > 0);
 
   header.nself    = sizeof(generic_header);
   header.nDatatyp = sizeof(double);
@@ -130,33 +131,28 @@ int main(int argc, char *argv[])
   const double chunk_len =  fabs( header.xMax-header.xMin ) / double(no_of_chunks);
   const double chunk_dkx =  2.0*M_PI/fabs(chunk_len);
 
-  printf( "dimX == %lld\n", header.nDimX );
-  printf( "dimY == %lld\n", header.nDimY );
-  printf( "dx  == %g\n", header.dx );
-  printf( "dkx == %g\n", header.dkx );
-  printf( "dy  == %g\n", header.dy );
-  printf( "dky == %g\n", header.dky );
+  const double runtime_size = (header.nDimX*header.nDimY*sizeof(double)+header.nDimX*(header.nDimY/2 + 1)*sizeof(fftw_complex))/pow(1024,3);
+  const double end_size = header.nDimX*header.nDimY*sizeof(double)/pow(1024,3);
+  cout << "Memory: Runtime "<< runtime_size << "GB, End " << end_size << "GB\n" << endl;
 
-  double runtime_size = (header.nDimX*header.nDimY*sizeof(double)+header.nDimX*(header.nDimY/2 + 1)*sizeof(fftw_complex))/pow(1024,3);
-  double end_size = header.nDimX*header.nDimY*sizeof(double)/pow(1024,3);
-  printf("Memory: Runtime %f GB, End %f GB\n", runtime_size, end_size);
+  vector<double> corr_length = {1000,1000};
+  cout << "corr_length_x\t" << corr_length[0] << endl;
+  cout << "corr_length_y\t" << corr_length[1] << endl;
 
-  vector<double> fac = {10,10};
-  std::cout << "fac_x\t" << fac[0] << std::endl;
-  std::cout << "fac_y\t" << fac[1] << std::endl;
+  vector<double> mink = {chunk_dkx, 0.0};
 
   Fourier::CNoise<Fourier::rft_2d,2> noise( header, seed );
-  noise.color_noise_custom2(2,chunk_dkx, fac);
+  noise.color_noise_custom2(2, mink, corr_length);
   noise.save("Noise.bin");
 
   ofstream log("noise_gen.log");
-  log << "Seed\t" << seed << std::endl;
-  log << "Threads\t" << no_of_threads << std::endl;
-  log << "Expansion_X\t" << fak << std::endl;
-  log << "Expansion_Y\t" << fak << std::endl;
-  log << "Chunks\t" << no_of_chunks << std::endl;
-  log << "fac_x\t" << fac[0] << std::endl;
-  log << "fac_y\t" << fac[1] << std::endl;
+  log << "Seed\t" << seed << endl;
+  log << "Threads\t" << no_of_threads << endl;
+  log << "Expansion_X\t" << fak << endl;
+  log << "Expansion_Y\t" << fak << endl;
+  log << "Chunks\t" << no_of_chunks << endl;
+  log << "corr_length_x\t" << corr_length[0] << endl;
+  log << "corr_length_y\t" << corr_length[1] << endl;
   fftw_cleanup_threads();
   return EXIT_SUCCESS;
 }
