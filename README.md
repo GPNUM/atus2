@@ -20,12 +20,13 @@ The code utilizes OpenMP and MPI for parallel computing.
 
 The following packages are required and will be installed via the install script:
 
-* openmpi 2.1.0
-* gnu gsl 2.3
+* openmpi 3.0.0
+* gnu gsl 2.4
 * muparser 2.2.5
-* fftw 3.3.6-pl2
-* lis 1.7.29
-* vtk 7.1.0
+* fftw 3.3.7
+* lis 2.0.4
+* vtk 8.0.1
+* hdf5 1.10.1
 
 The following third party packages are included in the source tree:
 
