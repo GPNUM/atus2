@@ -94,13 +94,15 @@ namespace RT_Solver
 
     fnoise.open( filename, ifstream::binary );
     if (fnoise.fail()) {
-      std::cout << "File not found: " << filename << std::endl;
-      abort();
+      cout << "File not found: " << filename << endl;
+      exit(EXIT_FAILURE);
     }
     fnoise.read( (char*)&source_header, sizeof(generic_header) );
 
     chunk_size = source_header.nDimX/no_of_chunks;
-    printf("chunk_size %i\n",chunk_size);
+    cout << "noise_nDimX: " << source_header.nDimX << endl;
+    cout << "no_of_chunks: " << no_of_chunks << endl;
+    cout << "chunk_size: " << chunk_size << endl;
 
     chunk_header = source_header;
     chunk_header.nDimX = chunk_size;
@@ -122,10 +124,18 @@ namespace RT_Solver
     dt = interpol_header.dx;
     current_chunk = -1;
 
-    printf("source: ndimX %lld dx %g ndimY %lld dy %g\n", source_header.nDimX, source_header.dx, source_header.nDimY,source_header.dy );
-    printf("chunk: ndimX %lld dx %g ndimY %lld dy %g\n", chunk_header.nDimX, chunk_header.dx, chunk_header.nDimY,chunk_header.dy );
-    printf("interpol: ndimX %lld dx %g ndimY %lld dy %g\n", interpol_header.nDimX, interpol_header.dx, interpol_header.nDimY,interpol_header.dy );
-
+    cout << "source: nDimX: " << source_header.nDimX
+         <<  " dx: " << source_header.dx
+         << " nDimY: " << source_header.nDimY
+         << " dy: " << source_header.dy << endl;
+    cout << "chunk: nDimX: " << chunk_header.nDimX
+         <<  " dx: " << chunk_header.dx
+         << " nDimY: " << chunk_header.nDimY
+         << " dy: " << chunk_header.dy << endl;
+    cout << "interpol: nDimX: " << interpol_header.nDimX
+         <<  " dx: " << interpol_header.dx
+         << " nDimY: " << interpol_header.nDimY
+         << " dy: " << interpol_header.dy << endl;
   }
 
   Noise_Data::~Noise_Data() {
@@ -144,14 +154,14 @@ namespace RT_Solver
     const int64_t shifti = interpolft->Get_Dim_X() - chunkft->Get_Dim_X();
     const int64_t Nynew = interpolft->Get_red_Dim();
 
-    std::cout << std::endl << "New Chunk " << chunk;
-    std::cout << " Old Chunk: " << current_chunk << std::endl;
+    cout << endl << "New Chunk " << chunk;
+    cout << " Old Chunk: " << current_chunk << endl;
     assert(chunk < no_of_chunks);
 
     // Read next chunk
     fnoise.seekg(sizeof(generic_header)+chunk*chunk_bytes);
     fnoise.read( (char*)chunk_in, chunk_bytes);
-    // chunkft->save( "chunk_" + std::to_string(chunk) + ".bin" );
+    // chunkft->save( "chunk_" + to_string(chunk) + ".bin" );
 
     // Expand
     chunkft->ft(-1);
@@ -175,9 +185,9 @@ namespace RT_Solver
         interpolft_out[j+(i+shifti)*Nynew][1] = chunk_out[j+i*Nyred][1];
       }
     }
-    // interpolft->save( "fichunk_" + std::to_string(chunk) + ".bin", false );
+    // interpolft->save( "fichunk_" + to_string(chunk) + ".bin", false );
     interpolft->ft(1);
-    // interpolft->save( "ichunk_" + std::to_string(chunk) + ".bin" );
+    // interpolft->save( "ichunk_" + to_string(chunk) + ".bin" );
 
     current_chunk = chunk;
   }
@@ -249,7 +259,7 @@ namespace RT_Solver
   {
     no_noise_run = (fabs(m_params->Get_Constant("Noise_Amplitude")) < 1e-8);
     if (no_noise_run) {
-      printf("No Noise Run\n");
+      cout << "No Noise Run" << endl;
     }
     m_oftotal.open("total.txt");
     double dt = 0.0;
@@ -257,12 +267,9 @@ namespace RT_Solver
     for (auto seq_item : m_params->m_sequence) {
       dt = seq_item.dt;
       duration += seq_item.duration.front();
-      printf("Chirps = %i\n", seq_item.no_of_chirps);
+      cout << "Chirps = " << seq_item.no_of_chirps << endl;
     }
     int NT = duration/dt;
-    printf("Duration %f\n", duration);
-    printf("NT %i\n", NT);
-    printf("NX %i\n", m_no_of_pts);
 
     m_noise.resize(m_no_of_pts);
     m_dx_noise.resize(m_no_of_pts);
@@ -270,12 +277,11 @@ namespace RT_Solver
 
     if (not no_noise_run) {
       noiseft = new Fourier::rft_1d(m_header);
-      printf("header: ndimX %lld dx %g ndimY %lld dy %g\n", m_header.nDimX, m_header.dx, m_header.nDimY,m_header.dy );
       noise_data = new Noise_Data(m_params->Get_simulation("NOISE"), no_of_chunks, noise_expansion);
     }
 
     m_max_noise = m_params->Get_Constant("Noise_Amplitude");
-    printf("max noise %f \n", m_max_noise);
+    cout << "Max Noise: " << m_max_noise << endl;
 
     m_map_stepfcts["bragg_ad"] = &Do_Bragg_ad_Wrapper;
     m_map_stepfcts["half_step"] = &Do_Noise_Step_half_Wrapper;
@@ -290,7 +296,6 @@ namespace RT_Solver
     this->m_rabi_momentum_list.push_back(pt3);
 
     int N = this->m_no_of_pts;
-    printf("N %i\n", N);
     lis_vector_create(0, &m_x);
     lis_vector_set_size(m_x, 0, 2*N);
     m_x_backup = m_x->value;
@@ -300,10 +305,8 @@ namespace RT_Solver
     const double dx = m_header.dx;
 
     alpha = m_alpha[0]*0.5;
-    printf("dx %f\n", dx);
-    printf("dt %f\n", dt);
-    printf("m_alpha %f\n", m_alpha[0]);
-    printf("alpha %f\n", alpha);
+    cout << "m_alpha: " << m_alpha[0] << '\n';
+    cout << "alpha: " << alpha << endl;
     init_cn_matrix(&m_cn_rA, N, 2.0/dt, -alpha, dx);
     init_cn_matrix(&m_cn_lA, N, 2.0/dt, alpha, dx);
     lis_solver_create(&m_solver);
@@ -350,7 +353,7 @@ namespace RT_Solver
     // return true if a custom sequence is found or else
     if( item.name == "pseudo_beamsplitter")
     {
-      std::vector<std::string> vec;
+      vector<string> vec;
       strtk::parse(item.content,",",vec);
       CPoint<1> P;
       CPoint<1> x;
@@ -392,7 +395,6 @@ namespace RT_Solver
    */
   void CRT_Propagation_1D::init_cn_matrix(LIS_MATRIX *A, int N, double diag, double alpha,
                                           double dx) {
-    printf("init_cn_matrix \n");
     double beta = -alpha;
     lis_matrix_create(0, A);
     lis_matrix_set_size(*A, 0, 2*N);
@@ -478,10 +480,9 @@ namespace RT_Solver
 
     lis_matrix_set_type(*A, LIS_MATRIX_CSR);
     if (lis_matrix_assemble(*A)) {
-      printf("Error lis_matrix_assemble\n");
+      cout << "Error in lis_matrix_assemble" << endl;
       throw;
     }
-    printf("init_cn_matrix done \n");
   }
 
   /** Add value to existing element of a lis_csr_matrix. (Unsafe)
@@ -550,11 +551,14 @@ namespace RT_Solver
     // Five-Point Stencel prefactors for 1st and 2nd differential
     const double fps1[] = { 1.0/(12.0*dx),
                             -8.0/(12.0*dx),
+                            0.0,
                             8.0/(12.0*dx),
                             -1.0/(12.0*dx) };
     const double fps2[] = { -1.0/(12.0*pow(dx,2)),
                             16.0/(12.0*pow(dx,2)),
-                            -30.0/(12.0*pow(dx,2)) };
+                            -30.0/(12.0*pow(dx,2)),
+                            16.0/(12.0*pow(dx,2)),
+                            -1.0/(12.0*pow(dx,2)) };
 
     // Local functions inserting the prefactor term for 2nd, 1st, 0th derivative
     auto d2 = [&](int i){ return (1.0 - m_noise[i]); };
@@ -575,52 +579,52 @@ namespace RT_Solver
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3+(2*N),
                         alpha*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                               + fps1[0]*(-d1(i-2+N) + d1(i))/2.0));
+                               + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i, (2*i)-1+(2*N),
                         alpha*(fps2[1]*(d2(i-1+N) + d2(i))/2.0
-                               + fps1[1]*(-d1(i-1+N) + d1(i))/2.0));
+                               + fps1[1]*(d1(i-1+N) + d1(i))/2.0));
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5+(2*N),
                         beta*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                              + fps1[0]*(-d1(i-2+N) + d1(i))/2.0));
+                              + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i+1, (2*i+1)-3+(2*N),
                         beta*(fps2[1]*(d2(i-1+N) + d2(i))/2.0
-                              + fps1[1]*(-d1(i-1+N) + d1(i))/2.0));
+                              + fps1[1]*(d1(i-1+N) + d1(i))/2.0));
 
       i = 1;
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3+(2*N),
                         alpha*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                               + fps1[0]*(-d1(i-2+N) + d1(i))/2.0));
+                               + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5+(2*N),
                         beta*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                              + fps1[0]*(-d1(i-2+N) + d1(i))/2.0));
+                              + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
       i = N-2;
       // real
       lis_csr_set_value(A, 2*i, (2*i)+5-(2*N),
                         alpha*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                               + fps1[3]*(-d1(i+2-N) + d1(i))/2.0));
+                               + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3-(2*N),
                         beta*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                              + fps1[3]*(-d1(i+2-N) + d1(i))/2.0));
+                              + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
 
       i = N-1;
       // real
       lis_csr_set_value(A, 2*i, (2*i)+3-(2*N),
                         alpha*(fps2[1]*(d2(i+1-N) + d2(i))/2.0
-                               + fps1[2]*(-d1(i+1-N) + d1(i))/2.0));
+                               + fps1[2]*(d1(i+1-N) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i, (2*i)+5-(2*N),
                         alpha*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                               + fps1[3]*(-d1(i+2-N) + d1(i))/2.0));
+                               + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)+1-(2*N),
                         beta*(fps2[1]*(d2(i+1-N) + d2(i))/2.0
-                              + fps1[2]*(-d1(i+1-N) + d1(i))/2.0));
+                              + fps1[2]*(d1(i+1-N) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3-(2*N),
                         beta*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                              + fps1[3]*(-d1(i+2-N) + d1(i))/2.0));
+                              + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
     }
 
     for (int i = 0; i < 2*N; i++) {
@@ -634,126 +638,126 @@ namespace RT_Solver
                              + d0(0)));
     lis_csr_set_value(A, 0, 0+3,
                       alpha*(fps2[1]*(d2(0+1) + d2(0))/2.0
-                             + fps1[2]*(-d1(0+1) + d1(0))/2.0));
+                             + fps1[2]*(d1(0+1) + d1(0))/2.0));
     lis_csr_set_value(A, 0, 0+5,
                       alpha*(fps2[0]*(d2(0+2) + d2(0))/2.0
-                             + fps1[3]*(-d1(0+2) + d1(0))/2.0));
+                             + fps1[3]*(d1(0+2) + d1(0))/2.0));
     // imag
     lis_csr_set_value(A, 1, 1-1,
                       beta*(fps2[2]*d2(0)
                             + d0(0)));
     lis_csr_set_value(A, 1, 1+1,
                       beta*(fps2[1]*(d2(0+1) + d2(0))/2.0
-                            + fps1[2]*(-d1(0+1) + d1(0))/2.0));
+                            + fps1[2]*(d1(0+1) + d1(0))/2.0));
     lis_csr_set_value(A, 1, 1+3,
                       beta*(fps2[0]*(d2(0+2) + d2(0))/2.0
-                            + fps1[3]*(-d1(0+2) + d1(0))/2.0));
+                            + fps1[3]*(d1(0+2) + d1(0))/2.0));
     // real
     lis_csr_set_value(A, 2, 2-1,
                       alpha*(fps2[1]*(d2(1-1) + d2(1))/2.0
-                             + fps1[1]*(-d1(1-1) + d1(1))/2.0));
+                             + fps1[1]*(d1(1-1) + d1(1))/2.0));
     lis_csr_set_value(A, 2, 2+1,
                       alpha*(fps2[2]*d2(1)
                              + d0(1)));
     lis_csr_set_value(A, 2, 2+3,
                       alpha*(fps2[1]*(d2(1+1) + d2(1))/2.0
-                             + fps1[2]*(-d1(1+1) + d1(1))/2.0));
+                             + fps1[2]*(d1(1+1) + d1(1))/2.0));
     lis_csr_set_value(A, 2, 2+5,
                       alpha*(fps2[0]*(d2(1+2) + d2(1))/2.0
-                             + fps1[3]*(-d1(1+2) + d1(1))/2.0));
+                             + fps1[3]*(d1(1+2) + d1(1))/2.0));
     // imag
     lis_csr_set_value(A, 3, 3-3,
                       beta*(fps2[1]*(d2(1-1) + d2(1))/2.0
-                            + fps1[1]*(-d1(1-1) + d1(1))/2.0));
+                            + fps1[1]*(d1(1-1) + d1(1))/2.0));
     lis_csr_set_value(A, 3, 3-1,
                       beta*(fps2[2]*d2(1)
                             + d0(1)));
     lis_csr_set_value(A, 3, 3+1,
                       beta*(fps2[1]*(d2(1+1) + d2(1))/2.0
-                            + fps1[2]*(-d1(1+1) + d1(1))/2.0));
+                            + fps1[2]*(d1(1+1) + d1(1))/2.0));
     lis_csr_set_value(A, 3, 3+3,
                       beta*(fps2[0]*(d2(1+2) + d2(1))/2.0
-                            + fps1[3]*(-d1(1+2) + d1(1))/2.0));
+                            + fps1[3]*(d1(1+2) + d1(1))/2.0));
 
     #pragma omp parallel for
     for (int i = 2; i < (N-2); i++) {
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3,
                         alpha*(fps2[0]*(d2(i-2) + d2(i))/2.0
-                               + fps1[0]*(-d1(i-2) + d1(i))/2.0));
+                               + fps1[0]*(d1(i-2) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i, (2*i)-1,
                         alpha*(fps2[1]*(d2(i-1) + d2(i))/2.0
-                               + fps1[1]*(-d1(i-1) + d1(i))/2.0));
+                               + fps1[1]*(d1(i-1) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i, (2*i)+1,
                         alpha*(fps2[2]*d2(i)
                                + d0(i)));
       lis_csr_set_value(A, 2*i, (2*i)+3,
-                        alpha*(fps2[1]*(d2(i+1) + d2(i))/2.0
-                               + fps1[2]*(-d1(i+1) + d1(i))/2.0));
+                        alpha*(fps2[3]*(d2(i+1) + d2(i))/2.0
+                               + fps1[3]*(d1(i+1) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i, (2*i)+5,
-                        alpha*(fps2[0]*(d2(i+2) + d2(i))/2.0
-                               + fps1[3]*(-d1(i+2) + d1(i))/2.0));
+                        alpha*(fps2[4]*(d2(i+2) + d2(i))/2.0
+                               + fps1[4]*(d1(i+2) + d1(i))/2.0));
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5,
                         beta*(fps2[0]*(d2(i-2) + d2(i))/2.0
-                              + fps1[0]*(-d1(i-2) + d1(i))/2.0));
+                              + fps1[0]*(d1(i-2) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i+1, (2*i+1)-3,
                         beta*(fps2[1]*(d2(i-1) + d2(i))/2.0
-                              + fps1[1]*(-d1(i-1) + d1(i))/2.0));
+                              + fps1[1]*(d1(i-1) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i+1, (2*i+1)-1,
                         beta*(fps2[2]*d2(i)
                               + d0(i)));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+1,
-                        beta*(fps2[1]*(d2(i+1) + d2(i))/2.0
-                              + fps1[2]*(-d1(i+1) + d1(i))/2.0));
+                        beta*(fps2[3]*(d2(i+1) + d2(i))/2.0
+                              + fps1[3]*(d1(i+1) + d1(i))/2.0));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3,
-                        beta*(fps2[0]*(d2(i+2) + d2(i))/2.0
-                              + fps1[3]*(-d1(i+2) + d1(i))/2.0));
+                        beta*(fps2[4]*(d2(i+2) + d2(i))/2.0
+                              + fps1[4]*(d1(i+2) + d1(i))/2.0));
     }
 
     // real
     lis_csr_set_value(A, (2*(N-2)), (2*(N-2))-3,
                       alpha*(fps2[0]*(d2((N-2)-2) + d2((N-2)))/2.0
-                             + fps1[0]*(-d1((N-2)-2) + d1((N-2)))/2.0));
+                             + fps1[0]*(d1((N-2)-2) + d1((N-2)))/2.0));
     lis_csr_set_value(A, (2*(N-2)), (2*(N-2))-1,
                       alpha*(fps2[1]*(d2((N-2)-1) + d2((N-2)))/2.0
-                             + fps1[1]*(-d1((N-2)-1) + d1((N-2)))/2.0));
+                             + fps1[1]*(d1((N-2)-1) + d1((N-2)))/2.0));
     lis_csr_set_value(A, (2*(N-2)), (2*(N-2))+1,
                       alpha*(fps2[2]*d2(N-2)
                              + d0(N-2)));
     lis_csr_set_value(A, (2*(N-2)), (2*(N-2))+3,
                       alpha*(fps2[1]*(d2(N-2+1) + d2(N-2))/2.0
-                             + fps1[2]*(-d1(N-2+1) + d1(N-2))/2.0));
+                             + fps1[2]*(d1(N-2+1) + d1(N-2))/2.0));
     // imag
     lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)-5,
                       beta*(fps2[0]*(d2(N-2-2) + d2(N-2))/2.0
-                            + fps1[0]*(-d1(N-2-2) + d1(N-2))/2.0));
+                            + fps1[0]*(d1(N-2-2) + d1(N-2))/2.0));
     lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)-3,
                       beta*(fps2[1]*(d2(N-2-2) + d2(N-2))/2.0
-                            + fps1[1]*(-d1(N-2-2) + d1(N-2))/2.0));
+                            + fps1[1]*(d1(N-2-2) + d1(N-2))/2.0));
     lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)-1,
                       beta*(fps2[2]*d2(N-2)
                             + d0(N-2)));
     lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)+1,
                       beta*(fps2[1]*(d2(N-2+1) + d2(N-2))/2.0
-                            + fps1[2]*(-d1(N-2+1) + d1(N-2))/2.0));
+                            + fps1[2]*(d1(N-2+1) + d1(N-2))/2.0));
     // real
     lis_csr_set_value(A, (2*(N-1)), (2*(N-1))-3,
                       alpha*(fps2[0]*(d2(N-1-2) + d2(N-1))/2.0
-                             + fps1[0]*(-d1(N-1-2) + d1(N-1))/2.0));
+                             + fps1[0]*(d1(N-1-2) + d1(N-1))/2.0));
     lis_csr_set_value(A, (2*(N-1)), (2*(N-1))-1,
                       alpha*(fps2[1]*(d2(N-1-1) + d2(N-1))/2.0
-                             + fps1[1]*(-d1(N-1-1) + d1(N-1))/2.0));
+                             + fps1[1]*(d1(N-1-1) + d1(N-1))/2.0));
     lis_csr_set_value(A, (2*(N-1)), (2*(N-1))+1,
                       alpha*(fps2[2]*d2(N-1)
                              + d0(N-1)));
     // imag
     lis_csr_set_value(A, (2*(N-1)+1), (2*(N-1)+1)-5,
                       beta*(fps2[0]*(d2(N-1-2) + d2(N-1))/2.0
-                            + fps1[0]*(-d1(N-1-2) + d1(N-1))/2.0));
+                            + fps1[0]*(d1(N-1-2) + d1(N-1))/2.0));
     lis_csr_set_value(A, (2*(N-1)+1), (2*(N-1)+1)-3,
                       beta*(fps2[1]*(d2(N-1-1) + d2(N-1))/2.0
-                            + fps1[1]*(-d1(N-1-1) + d1(N-1))/2.0));
+                            + fps1[1]*(d1(N-1-1) + d1(N-1))/2.0));
     lis_csr_set_value(A, (2*(N-1)+1), (2*(N-1)+1)-1,
                       beta*(fps2[2]*d2(N-1)
                             + d0(N-1)));
@@ -790,16 +794,17 @@ namespace RT_Solver
     m_x->value = reinterpret_cast<double*>(psi);
     err = lis_matvec(m_cn_rA, m_x, m_b);
 
-    if (myiter < 10) {
-      char * my_argument = const_cast<char*> (("rmatrix-"+to_string(myiter)+".txt").c_str());
-      lis_output_matrix(m_cn_rA, LIS_FMT_MM, my_argument);
-      char * my_argument2 = const_cast<char*> (("lmatrix-"+to_string(myiter)+".txt").c_str());
-      lis_output_matrix(m_cn_lA, LIS_FMT_MM, my_argument2);
-      myiter++;
-    }
+    // if (myiter < 3) {
+    //   char * my_argument = const_cast<char*> (("rmatrix-"+to_string(myiter)+".txt").c_str());
+    //   lis_output_matrix(m_cn_rA, LIS_FMT_MM, my_argument);
+    //   char * my_argument2 = const_cast<char*> (("lmatrix-"+to_string(myiter)+".txt").c_str());
+    //   lis_output_matrix(m_cn_lA, LIS_FMT_MM, my_argument2);
+    //   myiter++;
+    // }
 
     if (err) {
-      printf("ERROR: lis_matvec");
+      cout << "ERROR: lis_matvec" << endl;
+      exit(EXIT_FAILURE);
     }
 
     for (int i = 0; i < 2*N; i++) {
@@ -809,17 +814,18 @@ namespace RT_Solver
     err=lis_solve(m_cn_lA, m_b, m_x, m_solver);
     CHKERR(err);
     if (err) {
-      printf("ERROR: lis_solve");
+      cout << "ERROR: lis_solve" << endl;
+      exit(EXIT_FAILURE);
     }
 
     lis_solver_get_iterex(m_solver,&iter,&iter_double,&iter_quad);
     lis_solver_get_timeex(m_solver,&time,&itime,&ptime,&p_c_time,&p_i_time);
     lis_solver_get_residualnorm(m_solver,&resid);
     if (iter > 1000) {
-      printf("%f, Iter: %i\n", m_header.t, iter);
-      abort();
+      cout << "Error: Iter too high" << endl;
+      cout << "Time: " << m_header.t << ", Iter: " << iter << endl;
+      exit(EXIT_FAILURE);
     }
-
   }
 
 
@@ -873,13 +879,13 @@ namespace RT_Solver
 
     double total = 0;
     int no_int_states = 2;
-    m_oftotal << std::setprecision(12);
+    m_oftotal << setprecision(12);
     for( int c=0; c<no_int_states; c++ ) {
       double nParticles = this->Get_Particle_Number(c);
       m_oftotal << nParticles << "\t";
       total += nParticles;
     }
-    m_oftotal << total << std::endl;
+    m_oftotal << total << endl;
 
     Do_Single_Noise_Step_half(this->m_fields[0]->Getp2In());
     Do_Single_Noise_Step_half(this->m_fields[1]->Getp2In());
@@ -917,7 +923,7 @@ namespace RT_Solver
   void CRT_Propagation_1D::Do_Bragg_ad_Wrapper ( void* ptr,
                                                  sequence_item& seq )
   {
-    std::ignore = seq;
+    ignore = seq;
     CRT_Propagation_1D *self = static_cast<CRT_Propagation_1D*>(ptr);
     self->Do_Bragg_ad();
   }
@@ -1096,7 +1102,8 @@ int main( int argc, char* argv[] )
 {
   if( argc != 2 )
   {
-    printf( "No parameter xml file specified.\n" );
+    cout << "No parameter xml file specified." << endl;
+    cout << argv[0] << " freeprop.xml" << endl;
     return EXIT_FAILURE;
   }
 
@@ -1106,7 +1113,7 @@ int main( int argc, char* argv[] )
   char* envstr = getenv( "MY_NO_OF_THREADS" );
   if( envstr != nullptr ) no_of_threads = atoi( envstr );
 
-  printf("Number of threads %i\n", no_of_threads);
+  cout << "Number of threads: " << no_of_threads << endl;
   fftw_init_threads();
   fftw_plan_with_nthreads( no_of_threads );
   omp_set_num_threads( no_of_threads );
@@ -1127,7 +1134,7 @@ int main( int argc, char* argv[] )
     cout << "Position: " << e.GetPos() << "\n";
     cout << "Errc:     " << e.GetCode() << "\n";
   }
-  catch(std::string &str)
+  catch(string &str)
   {
     cout << str << endl;
   }

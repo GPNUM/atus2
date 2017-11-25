@@ -413,7 +413,7 @@ void CRT_Base_2_mpi<T,dim,no_int_states>::run_sequence()
   }
   catch (const std::out_of_range &oor)
   {
-    std::cerr << "Critical Error: Invalid fct ptr to half_step or full_step ()" << oor.what() << ')\n';
+    std::cerr << "Critical Error: Invalid fct ptr to half_step or full_step ()" << oor.what() << ")\n";
     exit(EXIT_FAILURE);
   }
 
@@ -473,7 +473,7 @@ void CRT_Base_2_mpi<T,dim,no_int_states>::run_sequence()
     }
     catch (const std::out_of_range &oor)
     {
-      std::cerr << "Critical Error: Invalid squence name " << seq.name << "\n(" << oor.what() << ')\n';
+      std::cerr << "Critical Error: Invalid squence name " << seq.name << "\n(" << oor.what() << ")\n";
       exit(EXIT_FAILURE);
     }
 

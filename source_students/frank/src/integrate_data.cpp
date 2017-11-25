@@ -21,9 +21,6 @@
 // along with ATUS2.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-/** Calculates the PSD
- *
- */
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -37,51 +34,61 @@
 #include "my_structs.h"
 #include "noise3_2d.h"
 #include "ParameterHandler.h"
+#include "fftw3.h"
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
 
-  if( argc < 2 )
-    {
-      cout << "No signal binary file specified." << endl;
-      return EXIT_FAILURE;
-    }
+  if (argc < 2) {
+    cout << "Missing arguments" << endl;
+    return EXIT_FAILURE;
+  }
+  cout << "Initialization...";
+  cout.flush();
+  generic_header header = {};
 
-  generic_header header;
-  ifstream fsignal(argv[1], ifstream::binary );
-  fsignal.read( (char*)&header, sizeof(generic_header));
+  cout << "File: " << argv[1] << endl;
+  ifstream fdata(argv[1], ifstream::binary );
+  if (fdata.fail()) {
+    cout << "File not found: " << argv[1] << endl;
+    abort();
+  }
+  fdata.read( (char*)&header, sizeof(generic_header));
 
-  int NX = header.nDimX;
-  int NY = header.nDimY;
-
-  Fourier::cft_2d ft(header);
-  fftw_complex* signal = ft.Getp2In();
-
-  fsignal.read( (char*)signal, sizeof(fftw_complex)*NX*NY );
-  fsignal.close();
-
-  ft.ft(-1);
-  fftw_complex* fourier = ft.Getp2Out();
-
-  double dx = header.dx;
-  double dy = header.dy;
-
-  int ij = 0;
-  for (int i = 0; i < NX; i++) {
-    for (int j = 0; j < NY; j++) {
-      ij = j + NY*i;
-      signal[ij][0] = pow(dx*dy*fourier[ij][0],2);
-    }
+  if (header.nDims != 2) {
+    cout << "nDims == 2 required." << endl;
+    abort();
   }
 
+  if (header.bComplex) {
+    cout << "Only real data supported" << endl;
+    abort();
+  }
+
+  cout << "Done." << endl;
+  cout << "Reading Data...";
+  cout.flush();
+  double* data = new double[header.nDimX*header.nDimY];
+  assert(data != nullptr);
+  fdata.read( (char*)data, header.nDimX*header.nDimY*sizeof(double));
+  cout << "Done." << endl;
+
+  cout << header.nDimX << " " << header.nDimY << endl;
+  for (int64_t i = 1; i < header.nDimX; ++i) {
+    for (int64_t j = 0; j < header.nDimY; ++j) {
+      data[j+i*header.nDimY] += data[j+(i-1)*header.nDimY];
+    }
+  }
+  cout << "Write to file...";
+  cout.flush();
   char* bin_header = reinterpret_cast<char*>(&header);
-  char* bin_signal = reinterpret_cast<char*>(signal);
+  ofstream file1("integral-fun.bin", ofstream::binary);
+  file1.write(bin_header, sizeof(generic_header));
+  file1.write(reinterpret_cast<char*>(data), header.nDimX*header.nDimY*sizeof(double));
+  cout << "Done." << endl;
 
-  ofstream file1( "psd.bin", ofstream::binary );
-  file1.write( bin_header, sizeof(generic_header) );
-  file1.write( bin_signal, NX*NY*sizeof(fftw_complex) );
-  file1.close();
 
+  return 0;
 }

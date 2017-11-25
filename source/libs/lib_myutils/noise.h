@@ -140,14 +140,14 @@ namespace Fourier
       *this *= 1/max();
     };
 
-    void color_noise_custom( const double exponent, const double mink0 )
+    void color_noise_custom( const double exponent, const std::vector<double> mink)
     {
-      std::array<double, dim> fac = {1.0};
-      color_noise_custom2( exponent, mink0, fac);
+      std::vector<double> corr_length(dim, 1.0);
+      color_noise_custom2( exponent, mink, corr_length );
     };
 
     template <typename ContType>
-    void color_noise_custom2( const double exponent, const double mink0, ContType& fac)
+    void color_noise_custom2( const double exponent, const ContType& mink, const ContType& corr_length)
     {
       CPoint<dim> k;
       double maxval = 0.0;
@@ -162,9 +162,12 @@ namespace Fourier
           bzero |= (k[i] == 0);
         }
 
-        if( k[0] < mink0 )
-        {
-          bzero = true;
+        // Clears values below cutoff frequency.
+        for (int i = 0; i < dim; ++i) {
+          if( fabs(k[i]) < mink[i] ) // fabs() needed to keep negative frequencies
+          {
+            bzero = true;
+          }
         }
 
         if( bzero )
@@ -174,24 +177,27 @@ namespace Fourier
         }
         else
         {
-          double tmp=1;
+          double psd = 1.0;
           for( int i=0; i<dim; i++ )
           {
-            tmp += pow(k[i]*fac[i],fabs(exponent));
+            // exp(-|tau|) correlated Noise
+            psd *= 1.0/corr_length[i]/(pow(k[i], fabs(exponent)) + pow(1.0/corr_length[i], fabs(exponent)));
           }
-          double tmp2 = 1/tmp;
-          if (tmp2 > maxval) {
-            maxval = tmp2;
+          double sqrt_psd = sqrt(psd);
+          if (sqrt_psd > maxval) {
+            maxval = sqrt_psd;
           }
-          m_out[l][0] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*tmp2;
-          m_out[l][1] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*tmp2;
+          m_out[l][0] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*sqrt_psd;
+          m_out[l][1] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*sqrt_psd;
         }
       }
 
       this->ft(1);
-      std::cout << "max: " << max() << "\t" << maxval << std::endl;
-      assert(1.0 > fabs(max()));
-      *this *= 1/max();
+
+      auto max_value = max();
+      std::cout << "max: " << max_value << "\t" << maxval << std::endl;
+      assert(1.0 > fabs(max_value));
+      *this *= 1.0/max_value;
 
       // Calculate Probability Distribution
       int N = 10000;

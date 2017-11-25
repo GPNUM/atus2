@@ -92,9 +92,13 @@
 
 (defun run (cmd)
   (format t "~&~a: ~a ~~$ ~a~%" (get-time) (uiop:getcwd) cmd)
-  (uiop:run-program cmd
-                    :output nil
-                    :error-output nil))
+  (let ((status (nth-value 2
+                           (uiop:run-program cmd
+                                             :output t
+                                             :error-output t
+                                             :ignore-error-status t))))
+    (format t "~&Exit Code: ~a~%" status))
+  (format t "~&~a: Done.~%" (get-time)))
 
 (defvar *noise.gpl* "gnuplot -e \"set terminal png;
 set pm3d map;
@@ -211,12 +215,12 @@ print \\\"Rabi done\\\"\"")
   (loop :for i :from start :to end
      :collect (format nil "~d/~@[~a/~]~a" i subdir filename)))
 
-(defun call-with-open-files (files fun &key (direction :input) (element-type 'base-char) if-exists if-does-not-exists more-args)
+(defun call-with-open-files (files fun &key (direction :input) (element-type 'base-char) if-exists if-does-not-exist more-args)
   "Opens every file in files and calls function fun with list of open streams as first argument and more-args as further arguments if any"
   (labels ((call-rec (files streams fun)
              (with-open-file (stream (first files)
                                      :direction direction :element-type element-type
-                                     :if-exists if-exists :if-does-not-exists if-does-not-exists)
+                                     :if-exists if-exists :if-does-not-exists if-does-not-exist)
                (if (null (rest files))
                    (apply fun (cons (cons stream streams) more-args))
                    (call-rec (rest files) (cons stream streams) fun)))))
@@ -244,7 +248,7 @@ print \\\"Rabi done\\\"\"")
     (call-with-open-files files avg-to-file-bin :element-type '(unsigned-byte 8))))
 
 (defun average-binary-text2 (files output-file &key avg-fun)
-  (flet ((avg-to-file-txt (streams output-file &key (avg-fun #'mean))
+  (flet ((avg-to-file-txt (streams output-file)
            (with-open-file (out (ensure-directories-exist output-file)
                                 :direction :output
                                 :if-exists :supersede)
@@ -693,6 +697,7 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
             (subdirs (mapcar #'pathname-name (subseq args 3))))
         (fetch start end filename subdirs))
       (print "noise-solver fetch <start> <end> <filename> <subdirs*>")))
+
 
 (defun main (&optional (argv (uiop:command-line-arguments)))
   (when (null argv)

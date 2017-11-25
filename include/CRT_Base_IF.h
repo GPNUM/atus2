@@ -162,6 +162,7 @@ void CRT_Base_IF<T,dim,no_int_states>::UpdateParams()
   catch (std::string &str )
   {
     cout << str << endl;
+    exit(EXIT_FAILURE);
   }
 }
 
@@ -188,6 +189,7 @@ double CRT_Base_IF<T,dim,no_int_states>::Amplitude_at_time()
       cout << "Token:    " << e.GetToken() << "\n";
       cout << "Position: " << e.GetPos() << "\n";
       cout << "Errc:     " << e.GetCode() << "\n";
+      exit(EXIT_FAILURE);
     }
   }
   else
@@ -657,7 +659,7 @@ void CRT_Base_IF<T,dim,no_int_states>::run_sequence()
   }
   catch (const std::out_of_range &oor)
   {
-    std::cerr << "Critical Error: Invalid fct ptr to ft_half_step or ft_full_step ()" << oor.what() << ')\n';
+    std::cerr << "Critical Error: Invalid fct ptr to ft_half_step or ft_full_step ()" << oor.what() << ")\n";
     exit(EXIT_FAILURE);
   }
 
@@ -731,7 +733,7 @@ void CRT_Base_IF<T,dim,no_int_states>::run_sequence()
     }
     catch (const std::out_of_range &oor)
     {
-      std::cerr << "Critical Error: Invalid squence name " << seq.name << "\n(" << oor.what() << ')\n';
+      std::cerr << "Critical Error: Invalid squence name " << seq.name << "\n(" << oor.what() << ")\n";
       exit(EXIT_FAILURE);
     }
 

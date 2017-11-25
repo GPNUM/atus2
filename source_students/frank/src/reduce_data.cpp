@@ -21,9 +21,6 @@
 // along with ATUS2.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-/** Reduce 2D data in binary files to 1024x1024 data points
- *
- */
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -38,27 +35,32 @@
 #include "noise3_2d.h"
 #include "ParameterHandler.h"
 
+using namespace std;
+
+long pixel = 512;
+
 int main(int argc, char *argv[])
 {
   if( argc < 2 )
-    {
-      printf( "No signal binary file specified.\n" );
-      return EXIT_FAILURE;
-    }
+  {
+    cout << "Reduces 2d array to " << pixel << "x" << pixel << " array." << endl;
+    cout << "Usage: reduce_data data.bin [option] [x-offset] [y-offset]" << endl;
+    cout << "Error: No signal binary file specified." << endl;
+    return EXIT_FAILURE;
+  }
 
   generic_header header;
   ifstream fsignal(argv[1], ifstream::binary );
   if (fsignal.fail()) {
-    std::cout << "File not found: " << argv[1] << std::endl;
-    abort();
+    cout << "File not found: " << argv[1] << endl;
+    exit(EXIT_FAILURE);
   }
   fsignal.read( (char*)&header, sizeof(generic_header));
   long NX = header.nDimX;
   long NY = header.nDimY;
-  long pixel = 512;
 
   if ( (NX < pixel) || (NY < pixel) ) {
-    std::cout << "Data already small" << std::endl;
+    cout << "Data already small" << endl;
     return 0;
   }
 
@@ -70,8 +72,13 @@ int main(int argc, char *argv[])
   header.dx *= rNX;
   header.dy *= rNY;
 
-  std::cout << NX << "\t" << NY << "\t" << std::endl;
-  std::cout << rNX << "\t" << rNY << "\t" << std::endl;
+  if (argc == 2) {
+    cout << "Normal Mode" << endl;
+  } else {
+    cout << "Alternative Mode" << endl;
+  }
+  cout << NX << "\t" << NY << "\t" << endl;
+  cout << rNX << "\t" << rNY << "\t" << endl;
 
   double *signal_real;
   double *rsignal_real;
@@ -92,27 +99,62 @@ int main(int argc, char *argv[])
 
   long ij;
   long rij;
-  if (header.bComplex) {
-    for (long i = 0; i < pixel; i++) {
-      for (long j = 0; j < pixel; j++) {
-        rij = j + i*pixel;
-        ij = j*rNY + i*NY*rNX;
-        rsignal_complex[rij][0] = signal_complex[ij][0];
+  if (argc == 2) {
+    if (header.bComplex) {
+      for (long i = 0; i < pixel; i++) {
+        for (long j = 0; j < pixel; j++) {
+          rij = j + i*pixel;
+          ij = j*rNY + i*NY*rNX;
+          rsignal_complex[rij][0] = signal_complex[ij][0];
+        }
+      }
+    } else {
+      for (long i = 0; i < pixel; i++) {
+        for (long j = 0; j < pixel; j++) {
+          rij = j + i*pixel;
+          ij = j*rNY + i*NY*rNX;
+          rsignal_real[rij] = signal_real[ij];
+        }
       }
     }
-  } else {
-    for (long i = 0; i < pixel; i++) {
-      for (long j = 0; j < pixel; j++) {
-        rij = j + i*pixel;
-        ij = j*rNY + i*NY*rNX;
-        rsignal_real[rij] = signal_real[ij];
-      }
-    }
-  }
 
+  } else {
+    int64_t NX_offset = 0;
+    int64_t NY_offset = 0;
+    if (argc > 4) {
+      NX_offset = atoi(argv[3]);
+      NY_offset = atoi(argv[4]);
+      assert(NX_offset < (NX-pixel));
+      assert(NY_offset < (NY-pixel));
+      cout << "New offsets" << endl;
+    }
+    if (header.bComplex) {
+      for (long i = 0; i < pixel; i++) {
+        for (long j = 0; j < pixel; j++) {
+          rij = j + i*pixel;
+          ij = (j+NY_offset) + (i+NX_offset)*NY;
+          rsignal_complex[rij][0] = signal_complex[ij][0];
+        }
+      }
+    } else {
+      for (long i = 0; i < pixel; i++) {
+        for (long j = 0; j < pixel; j++) {
+          rij = j + i*pixel;
+          ij = (j+NY_offset) + (i+NX_offset)*NY;
+          rsignal_real[rij] = signal_real[ij];
+        }
+      }
+    }
+
+  }
   char* bin_header = reinterpret_cast<char*>(&header);
-  std::string foo = string(argv[1]);
-  ofstream file1( "red_"+foo, ofstream::binary );
+  string foo = string(argv[1]);
+  ofstream file1;
+  if (argc == 2) {
+    file1.open( "red_"+foo, ofstream::binary );
+  } else {
+    file1.open( "red_alt_"+foo, ofstream::binary );
+  }
   file1.write( bin_header, sizeof(generic_header) );
   char* bin_signal;
   if (header.bComplex) {

@@ -94,7 +94,8 @@ int main(int argc, char *argv[])
   Fourier::cft_2d ft( header2, false, true );
 
   Fourier::CNoise<Fourier::rft_2d,2> noise( header );
-  noise.color_noise_custom(2,header2.dkx);
+  std::vector<double> mink = {header2.dkx, 0.0};
+  noise.color_noise_custom(2,mink);
   //noise.white_noise();
   noise.save("noise.bin");
 
