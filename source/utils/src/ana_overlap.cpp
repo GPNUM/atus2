@@ -134,6 +134,7 @@ int main(int argc, char *argv[])
   double overlap = (re*re + im*im)/sqrt(N1)/sqrt(N2);
 
   std::cout << "overlap = " << overlap << std::endl;
+  std::cout << "N1 = " << N1 << ", N2 = " << N2 << std::endl;
   std::cout << "max density = " << m1/N1 << ", " << m2/N2 << std::endl;
 
   delete [] wf1;
