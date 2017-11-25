@@ -1,14 +1,24 @@
 PROJECT (atus2)
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1)
 
-# specify compiler
-# cmake -DCMAKE_CXX_COMPILER=g++-6 -DCMAKE_C_COMPILER=gcc-6 ..
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+message("**********************************************************************")
+execute_process(COMMAND sh -c "module list")
+message("**********************************************************************")
 
 find_package(MPI)
 find_package(VTK NO_MODULE)
 find_package(Boost REQUIRED)
 find_package(Doxygen)
+find_package(GSL REQUIRED)
+find_package(FFTW REQUIRED)
+find_package(LIS REQUIRED)
+find_package(HDF5 REQUIRED)
+find_package(MUPARSER REQUIRED)
+message("**********************************************************************")
+
 
 #SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 
@@ -43,64 +53,21 @@ if(BUILD_DOCUMENTATION)
         VERBATIM)
 endif()
 
-### GSL library
-find_library( GSL_LIBRARY_1 NAMES gsl  PATHS ENV LD_LIBRARY_PATH NO_DEFAULT_PATH )
-if( NOT GSL_LIBRARY_1 )
-  message( FATAL_ERROR "Could not find libgsl." )
-endif()
-find_library( GSL_LIBRARY_2 NAMES gslcblas PATHS ENV LD_LIBRARY_PATH NO_DEFAULT_PATH )
-if( NOT GSL_LIBRARY_2 )
-  message( FATAL_ERROR "Could not find libgslcblas." )
-endif()
-get_filename_component( TMP ${GSL_LIBRARY_1} PATH )
-get_filename_component( TMP ${TMP} PATH )
-set( GSL_INC_DIR ${TMP}/include CACHE STRING INTERNAL )
-
-# FFTW library
-find_library( FFTW_LIBRARY_1 NAMES fftw3  PATHS ENV LD_LIBRARY_PATH NO_DEFAULT_PATH )
-if( NOT FFTW_LIBRARY_1 )
-  message( FATAL_ERROR "Could not find libfftw3." )
-endif()
-find_library( FFTW_LIBRARY_2 NAMES fftw3_omp  PATHS ENV LD_LIBRARY_PATH NO_DEFAULT_PATH )
-if( NOT FFTW_LIBRARY_2 )
-  message( FATAL_ERROR "Could not find libfftw3_omp." )
-endif()
-if( MPI_CXX_FOUND )
-  find_library( FFTW_LIBRARY_3 NAMES fftw3_mpi  PATHS ENV LD_LIBRARY_PATH NO_DEFAULT_PATH )
-  if( NOT FFTW_LIBRARY_3 )
-    message( FATAL_ERROR "Could not find libfftw3_mpi." )
-  endif()
-endif()
-get_filename_component( TMP ${FFTW_LIBRARY_1} PATH )
-get_filename_component( TMP ${TMP} PATH )
-set( FFTW_INC_DIR ${TMP}/include CACHE STRING INTERNAL )
-
-# muParser library
-find_library( MUPARSER_LIBRARY NAMES muparser  PATHS ENV LD_LIBRARY_PATH NO_DEFAULT_PATH )
-if( NOT MUPARSER_LIBRARY )
-  message( FATAL_ERROR "Could not find libmuparser." )
-endif()
-get_filename_component( TMP ${MUPARSER_LIBRARY} PATH )
-get_filename_component( TMP ${TMP} PATH )
-set( MUPARSER_INC_DIR ${TMP}/include CACHE STRING INTERNAL )
-
-# lis library http://www.ssisc.org/lis/index.en.html
-find_library( LIS_LIBRARY NAMES lis PATHS ENV LD_LIBRARY_PATH NO_DEFAULT_PATH )
-if( LIS_LIBRARY )
-  get_filename_component( TMP ${LIS_LIBRARY} PATH )
-  get_filename_component( TMP ${TMP} PATH )
-  set( LIS_INC_DIR ${TMP}/include CACHE STRING INTERNAL )
-  include_directories( ${LIS_INC_DIR} )
-endif()
-
 set( EXECUTABLE_OUTPUT_PATH  ${HOME}/bin )
-set( LIBRARY_OUTPUT_PATH  ${HOME}/bin/lib )
-#SET( EXECUTABLE_INSTALL_PATH  ${HOME}/bin )
+#set( LIBRARY_OUTPUT_PATH  ${HOME}/bin/lib )
+#set( EXECUTABLE_INSTALL_PATH  ${HOME}/bin )
 
-# Zuerst die Pfade angeben
-#=========================
-include_directories( ${MPI_CXX_INCLUDE_PATH} ${Boost_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${DIR_INC} ${DIR_MYLIB} ${DIR_MYLIB_MPI}/src_mpi ${GSL_INC_DIR} ${FFTW_INC_DIR} ${MUPARSER_INC_DIR} )
-#LINK_DIRECTORIES( ${GSL_LIB_DIR} ${FFTW_LIB_DIR} )
+include_directories( ${MPI_CXX_INCLUDE_PATH} 
+                     ${Boost_INCLUDE_DIRS} 
+                     ${VTK_INCLUDE_DIRS} 
+                     ${DIR_INC} ${DIR_MYLIB} 
+                     ${DIR_MYLIB_MPI}/src_mpi 
+                     ${GSL_INCLUDE_DIR} 
+                     ${FFTW_INCLUDE_DIR} 
+                     ${LIS_INCLUDE_DIR} 
+                     ${MUPARSER_INCLUDE_DIR} 
+                     ${HDF5_INCLUDE_DIR} 
+)
 
 # enable profiling
 #set( CMAKE_EXE_LINKER_FLAGS -pg )
