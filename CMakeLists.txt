@@ -54,9 +54,6 @@ if(BUILD_DOCUMENTATION)
 endif()
 
 set( EXECUTABLE_OUTPUT_PATH  ${HOME}/bin )
-<<<<<<< HEAD
-#set( LIBRARY_OUTPUT_PATH  ${HOME}/bin/lib )
-#set( EXECUTABLE_INSTALL_PATH  ${HOME}/bin )
 
 include_directories( ${MPI_CXX_INCLUDE_PATH} 
                      ${Boost_INCLUDE_DIRS} 
@@ -69,16 +66,6 @@ include_directories( ${MPI_CXX_INCLUDE_PATH}
                      ${MUPARSER_INCLUDE_DIR} 
                      ${HDF5_INCLUDE_DIR} 
 )
-=======
-set( LIBRARY_OUTPUT_PATH  ${HOME}/bin/lib )
-#SET( EXECUTABLE_INSTALL_PATH  ${HOME}/bin )
-
-# Zuerst die Pfade angeben
-#=========================
-include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH} ${Boost_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS}  ${GSL_INC_DIR} ${FFTW_INC_DIR} ${MUPARSER_INC_DIR} )
-include_directories( ${DIR_INC} ${DIR_MYLIB} ${DIR_MYLIB_MPI}/src_mpi )
-#LINK_DIRECTORIES( ${GSL_LIB_DIR} ${FFTW_LIB_DIR} )
->>>>>>> 65e636b26cc0d7908e9688bfda95ec0828ba0bbb
 
 # enable profiling
 #set( CMAKE_EXE_LINKER_FLAGS -pg )
