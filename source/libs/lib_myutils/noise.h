@@ -143,14 +143,24 @@ namespace Fourier
     void color_noise_custom( const double exponent, const std::vector<double> mink)
     {
       std::vector<double> corr_length(dim, 1.0);
-      color_noise_custom2( exponent, mink, corr_length );
+      color_noise_exp( exponent, mink, corr_length );
     };
 
     template <typename ContType>
-    void color_noise_custom2( const double exponent, const ContType& mink, const ContType& corr_length)
+    void color_noise_exp( const double exponent, const ContType& mink, const ContType& corr_length)
+    // Generate separate exp(-|tau|/t_corr) correlated Noise
     {
       CPoint<dim> k;
-      double maxval = 0.0;
+
+      // Generate Gaussian Distributed White Noise in real space
+      double sigma = 0.2;
+      #pragma omp parallel for private(k)
+      for (int64_t i = 0; i < this->m_dim; ++i) {
+        m_in_real[i] = gsl_ran_gaussian_ziggurat(m_r[omp_get_thread_num()], sigma);
+      }
+      this->ft(-1);
+
+      // Multiply with desired Power Spectral Density in Fourier Space
       #pragma omp parallel for private(k)
       for( int64_t l=0; l<this->m_dim_fs; l++ )
       {
@@ -180,60 +190,22 @@ namespace Fourier
           double psd = 1.0;
           for( int i=0; i<dim; i++ )
           {
-            // exp(-|tau|) correlated Noise
+            // exp(-|tau|/t_corr) correlated Noise
             psd *= 1.0/corr_length[i]/(pow(k[i], fabs(exponent)) + pow(1.0/corr_length[i], fabs(exponent)));
           }
           double sqrt_psd = sqrt(psd);
-          if (sqrt_psd > maxval) {
-            maxval = sqrt_psd;
-          }
-          m_out[l][0] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*sqrt_psd;
-          m_out[l][1] = gsl_ran_flat (m_r[omp_get_thread_num()],-0.5,0.5)*sqrt_psd;
+          m_out[l][0] *= sqrt_psd;
+          m_out[l][1] *= sqrt_psd;
         }
       }
 
       this->ft(1);
 
-      auto max_value = max();
-      std::cout << "max: " << max_value << "\t" << maxval << std::endl;
+      // Normalize to 1
+      auto max_value = this->max();
+      std::cout << "Maximum value: " << max_value << std::endl;
       assert(1.0 > fabs(max_value));
       *this *= 1.0/max_value;
-
-      // Calculate Probability Distribution
-      int N = 10000;
-      int prob_dist[N] = {};
-      double nMin = -1.0;
-      double nMax = -nMin;
-      double dn = (nMax-nMin)/N;
-      for (int j = 0; j <this->m_dim; j++) {
-        prob_dist[static_cast<int64_t>((m_in_real[j]-nMin)/dn)] += 1;
-      }
-
-      int imaxval = 0;
-      for (int i = 0; i < N; i++) {
-        if (prob_dist[i] > imaxval) {
-          imaxval = prob_dist[i];
-        }
-      }
-
-      // Scale on 1/e width
-      double xleft = 0;
-      for (int i = 0; i < N; i++) {
-        double value = prob_dist[i];
-        if (value > imaxval/exp(1)) {
-          xleft = nMin + i*dn;
-          break;
-        }
-      }
-      std::cout << "xleft: " << xleft << std::endl;
-      *this *= 0.25/xleft;
-
-      // Cutoff at abs(1)
-      for (int j = 0; j <this->m_dim; j++) {
-        if (fabs(m_in_real[j]) > 1.0) {
-          m_in_real[j] = 0.9999;
-        }
-      }
     };
 
     CNoise& operator*=(const double s)

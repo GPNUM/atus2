@@ -562,16 +562,9 @@ namespace RT_Solver
 
     // Local functions inserting the prefactor term for 2nd, 1st, 0th derivative
     auto d2 = [&](int i){ return (1.0 - m_noise[i]); };
-    auto d1 = [&](int i){ return (-m_dx_noise[i] +
-                                  0.5*(1.0 - m_noise[i])
-                                  *m_dx_noise[i]); };
-    auto d0 = [&](int i){ return ((1.0 - m_noise[i])
-                                  *(-0.25*m_dx2_noise[i]/(1.0 + m_noise[i])
-                                    + 5.0/16.0 * pow(m_dx_noise[i]
-                                                     / (1.0 + m_noise[i]),2))
-                                  + 0.25*pow(m_dx_noise[i], 2) / (1.0 + m_noise[i])
-                                  - 0.125 * (1.0 - m_noise[i])*pow(m_dx_noise[i], 2)
-                                  / (1 + m_noise[i])); };
+    auto d1 = [&](int i){ return (-m_dx_noise[i]); };
+    auto d0 = [&](int i){ return ( -(0.25*m_dx2_noise[i]
+                                     + 1.0/16.0*pow(m_dx_noise[i],2)/(1.0-m_noise[i])) );};
 
     // Wrap around
     {

@@ -40,7 +40,7 @@
 using namespace std;
 
 const int fak = 8;
-const int no_of_chunks = 64;
+const int no_of_chunks = fak*fak;
 
 int main(int argc, char *argv[])
 {
@@ -88,11 +88,11 @@ int main(int argc, char *argv[])
     }
   }
   cout << "Duration: " << duration << endl;
-  cout << "dt: " << dt;
+  cout << "dt: " << dt << endl;
   assert(dt > 0.0);
   assert(duration > 0.0);
   int exponent = ceil(log2(duration/dt));
-  cout << "Exponent: " << exponent;
+  cout << "Exponent: " << exponent << endl;
   duration = pow(2.0, ceil(log2(duration/dt)))*dt;
   cout << "New Duration: " << duration << endl;
   cout << "Lower Duration: " << pow(2.0, exponent-1)*dt << endl;
@@ -135,14 +135,18 @@ int main(int argc, char *argv[])
   const double end_size = header.nDimX*header.nDimY*sizeof(double)/pow(1024,3);
   cout << "Memory: Runtime "<< runtime_size << "GB, End " << end_size << "GB\n" << endl;
 
-  vector<double> corr_length = {1000,1000};
+  const double chunk_x = fabs(header.xMax-header.xMin)/10.0;
+  const double chunk_y = fabs(header.yMax-header.yMin)/10.0;
+//  vector<double> corr_length = {1000,1000};
+  vector<double> corr_length = {chunk_x,chunk_y};
+
   cout << "corr_length_x\t" << corr_length[0] << endl;
   cout << "corr_length_y\t" << corr_length[1] << endl;
 
   vector<double> mink = {chunk_dkx, 0.0};
 
   Fourier::CNoise<Fourier::rft_2d,2> noise( header, seed );
-  noise.color_noise_custom2(2, mink, corr_length);
+  noise.color_noise_exp(2.0, mink, corr_length);
   noise.save("Noise.bin");
 
   ofstream log("noise_gen.log");

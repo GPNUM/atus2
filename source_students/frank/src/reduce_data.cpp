@@ -145,8 +145,8 @@ int main(int argc, char *argv[])
         }
       }
     }
-
   }
+
   char* bin_header = reinterpret_cast<char*>(&header);
   string foo = string(argv[1]);
   ofstream file1;
