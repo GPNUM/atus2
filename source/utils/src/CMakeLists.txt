@@ -29,8 +29,8 @@ TARGET_LINK_LIBRARIES( inflate_domain myutils )
 ADD_EXECUTABLE( compute_overlap compute_overlap.cpp)
 TARGET_LINK_LIBRARIES( compute_overlap myutils)
 
-ADD_EXECUTABLE( compute_expansion_coefficients compute_expansion_coefficients.cpp )
-TARGET_LINK_LIBRARIES( compute_expansion_coefficients myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} )
+#ADD_EXECUTABLE( compute_expansion_coefficients compute_expansion_coefficients.cpp )
+#TARGET_LINK_LIBRARIES( compute_expansion_coefficients myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} )
 
 ADD_EXECUTABLE( gen_head gen_head.cpp )
 TARGET_LINK_LIBRARIES( gen_head myutils )
