@@ -25,7 +25,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <omp.h>
-#include "anyoption.h"
+#include <fstream>
+#include "cxxopts.hpp"
 #include "fftw3.h"
 #include "my_structs.h"
 
@@ -38,8 +39,7 @@ enum
   K_CONST = 0x04,
   RT = 0x08,
   IT = 0x10,
-  BW = 0x20,
-  PH = 0x80
+  PH = 0x20
 };
 
 using namespace std;
@@ -404,40 +404,19 @@ void display_2D( double *field, generic_header *header, int opt, const int i0, c
     return;
   }
 
-
-  if ( opt & BW )
+  x = x0;
+  for ( i=0; i<dimX; i++ )
   {
-    x = x0;
-    for ( i=0; i<dimX; i++ )
+    x += dx;
+    y  = y0;
+    for ( j=0; j<dimY; j++ )
     {
-      x += dx;
-      y  = y0;
-      for ( j=0; j<dimY; j++ )
-      {
-        y += dy;
-        ij = j+dimY*i;
+      y += dy;
+      ij = j+dimY*i;
 
-        printf( "%e\t%e\t%e\n", x, y, sign(field[ij]) );
-      }
-      printf( "\n" );
+      printf( "%g\t%g\t%.10e\n", x, y, field[ij] );
     }
-  }
-  else
-  {
-    x = x0;
-    for ( i=0; i<dimX; i++ )
-    {
-      x += dx;
-      y  = y0;
-      for ( j=0; j<dimY; j++ )
-      {
-        y += dy;
-        ij = j+dimY*i;
-
-        printf( "%g\t%g\t%.10e\n", x, y, field[ij] );
-      }
-      printf( "\n" );
-    }
+    printf( "\n" );
   }
 }
 
@@ -475,68 +454,49 @@ void display_1D( double *field, generic_header *header )
 
 int main(int argc, char *argv[])
 {
-  int i0=-1, j0=-1, k0=-1, options=0;
+  int i0=-1, j0=-1, k0=-1, flags=0;
+
+  cxxopts::Options options("gpo3", "Pipe program for gnuplot output");
+
+  options.add_options()
+  ("i,xi",  "Fix x coord. for slices at index i", cxxopts::value<int>()->default_value("-1") )
+  ("j,yi",  "Fix y coord. for slices at index j", cxxopts::value<int>()->default_value("-1") )
+  ("k,zi",  "Fix z coord. for slices at index k", cxxopts::value<int>()->default_value("-1") )
+  ("a,re",  "output real part of a complex wave function", cxxopts::value<bool>()->default_value("false") )
+  ("b,im",  "output imag part of a complex wave function", cxxopts::value<bool>()->default_value("false") )
+  ("p,ph",  "output phase of a complex wave function", cxxopts::value<bool>()->default_value("false") )
+  ("positional", "Positional arguments: these are the arguments that are entered without an option", cxxopts::value<std::vector<std::string>>())
+  ;
+  
+  options.parse_positional({"positional"});
+  auto result = options.parse(argc, argv);
 
   string filename;
 
-  AnyOption *opt = new AnyOption();
-
-  opt->noPOSIX();
-  //opt->setVerbose();
-  //opt->autoUsagePrint(true);
-
-  opt->addUsage( "" );
-  opt->addUsage( "Usage: gpo2 [options] filename" );
-  opt->addUsage( "" );
-  opt->addUsage( " -h --help	Prints this help " );
-  opt->addUsage( " -i val  	Fix x coord. index i at val" );
-  opt->addUsage( " -j val  	Fix y coord. index j at val" );
-  opt->addUsage( " -k val  	Fix z coord. index k at val" );
-  opt->addUsage( " -re		prints out the real part of a complex wavefunction" );
-  opt->addUsage( " -im		prints out the imag part of a complex wavefunction" );
-  opt->addUsage( " -bw		" );
-  opt->addUsage( " -ph		" );
-  opt->addUsage( "" );
-
-  opt->setFlag(  "help", 'h' );
-  opt->setOption( "i" );
-  opt->setOption( "j" );
-  opt->setOption( "k" );
-  opt->setFlag(  "re" );
-  opt->setFlag(  "im" );
-  opt->setFlag(  "bw" );
-  opt->setFlag(  "ph" );
-
-  opt->processCommandArgs( argc, argv );
-
-  if ( opt->getFlag( "help" ) || opt->getFlag( 'h' ) ) opt->printUsage();
-
-  if ( opt->getValue("i") != nullptr )
+  try
   {
-    i0 = atof(opt->getValue("i"));
-    options |= I_CONST;
-  };
-  if ( opt->getValue("j") != nullptr )
+    if( result["positional"].as<std::vector<std::string>>().size() > 0 )
+    {
+      filename = result["positional"].as<std::vector<std::string>>()[0]; 
+    }
+    else
+    {        
+      std::cout << "error parsing options: missing file name" << std::endl;
+      return EXIT_FAILURE;
+    }
+    i0 = result["i"].as<int>();
+    j0 = result["j"].as<int>();
+    k0 = result["k"].as<int>();
+
+    if( result["re"].as<bool>() ) flags |= RT;
+    if( result["im"].as<bool>() ) flags |= IT;
+    if( result["ph"].as<bool>() ) flags |= PH;
+  }
+  catch (const cxxopts::OptionException& e)
   {
-    j0 = atof(opt->getValue("j"));
-    options |= J_CONST;
-  };
-  if ( opt->getValue("k") != nullptr )
-  {
-    k0 = atof(opt->getValue("k"));
-    options |= K_CONST;
-  };
-
-  if ( opt->getFlag( "re" ) ) options |= RT;
-  if ( opt->getFlag( "im" ) ) options |= IT;
-  if ( opt->getFlag( "bw" ) ) options |= BW;
-  if ( opt->getFlag( "ph" ) ) options |= PH;
-
-
-  if ( opt->getArgc() != 0 ) filename = opt->getArgv(0);
-  else opt->printUsage();
-
-  delete opt;
+    std::cout << "error parsing options: " << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
 
   generic_header header;
 
@@ -610,7 +570,7 @@ int main(int argc, char *argv[])
     fftw_complex *field = fftw_alloc_complex(header.nDimX*header.nDimY);
     in.read( (char *)field, total_no_bytes );
 
-    display_2D( field, &header, options, i0, j0 );
+    display_2D( field, &header, flags, i0, j0 );
 
     fftw_free(field);
   }
@@ -622,7 +582,7 @@ int main(int argc, char *argv[])
     double *field = fftw_alloc_real(header.nDimX*header.nDimY);
     in.read( (char *)field, total_no_bytes );
 
-    display_2D( field, &header, options, i0, j0 );
+    display_2D( field, &header, flags, i0, j0 );
 
     fftw_free(field);
   }
@@ -634,7 +594,7 @@ int main(int argc, char *argv[])
     fftw_complex *field = fftw_alloc_complex(header.nDimX*header.nDimY*header.nDimZ);
     in.read( (char *)field, total_no_bytes );
 
-    display_3D( field, &header, options, i0, j0, k0 );
+    display_3D( field, &header, flags, i0, j0, k0 );
 
     fftw_free(field);
   }
@@ -646,7 +606,7 @@ int main(int argc, char *argv[])
     double *field = fftw_alloc_real(header.nDimX*header.nDimY*header.nDimZ);
     in.read( (char *)field, total_no_bytes );
 
-    display_3D( field, &header, options, i0, j0, k0 );
+    display_3D( field, &header, flags, i0, j0, k0 );
 
     fftw_free(field);
   }
