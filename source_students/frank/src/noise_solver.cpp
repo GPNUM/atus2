@@ -223,6 +223,7 @@ namespace RT_Solver
     void Do_Noise_Step_half(sequence_item& seq);
     void Do_Noise_Step_full(sequence_item& seq);
 
+    void set_noise(sequence_item& seq, int64_t t);
     void init_cn_matrix(LIS_MATRIX *A, int N, double diag, double alpha, double dx);
     void set_cn_matrix_with_metric_noise(LIS_MATRIX A, int sign);
     void lis_csr_add_value(LIS_MATRIX A, int i, int j, LIS_SCALAR val);
@@ -399,84 +400,125 @@ namespace RT_Solver
     lis_matrix_create(0, A);
     lis_matrix_set_size(*A, 0, 2*N);
 
+    // Five-Point Stencel prefactors for 1st and 2nd differential
+    const double fps0[] = { 0.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                            0.0 };
+    const double fps1[] = { 1.0/(12.0*dx),
+                            -8.0/(12.0*dx),
+                            0.0,
+                            8.0/(12.0*dx),
+                            -1.0/(12.0*dx) };
+    const double fps2[] = { -1.0/(12.0*pow(dx,2)),
+                            16.0/(12.0*pow(dx,2)),
+                            -30.0/(12.0*pow(dx,2)),
+                            16.0/(12.0*pow(dx,2)),
+                            -1.0/(12.0*pow(dx,2)) };
 
-    lis_matrix_set_value(LIS_INS_VALUE, 2*0, (2*0)-3+(2*N), -alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*0, (2*0)-1+(2*N), 16*alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*0+1, (2*0+1)-5+(2*N), -beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*0+1, (2*0+1)-3+(2*N), 16*beta/(12.0*pow(dx,2)),*A);
+    // Local functions inserting the prefactor term for 2nd, 1st, 0th derivative
+    const auto d2 = [&](int i){ return (1.0 - m_noise[i]); };
+    const auto d1 = [&](int i){ return (-m_dx_noise[i]); };
+    const auto d0 = [&](int i){ return ( -(0.25*m_dx2_noise[i]
+                                     + 1.0/16.0*pow(m_dx_noise[i],2)/(1.0-m_noise[i])) );};
 
-    lis_matrix_set_value(LIS_INS_VALUE, 2*1, (2*1)-3+(2*N), -alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*1+1, (2*1+1)-5+(2*N), -beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2), (2*(N-2))+5-(2*N), -alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2)+1, (2*(N-2)+1)+3-(2*N), -beta/(12.0*pow(dx,2)),*A);
+    // Matrix element function
+    const auto fun = [&](int n, int i) {
+                 return alpha*(fps2[n]*d2(i) + fps1[n]*d1(i) + fps0[n]*d0(i));
+               };
 
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1), (2*(N-1))+3-(2*N), 16*alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1), (2*(N-1))+5-(2*N), -alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1)+1, (2*(N-1)+1)+1-(2*N), 16*beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-1)+1, (2*(N-1)+1)+3-(2*N), -beta/(12.0*pow(dx,2)),*A);
+    // Five-Point-Stencil difference scheme
 
-    // real
-    lis_matrix_set_value(LIS_INS_VALUE, 0, 0, diag,*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 0, 0+1, -30*alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 0, 0+3, 16*alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 0, 0+5, -alpha/(12.0*pow(dx,2)),*A);
-    // imag
-    lis_matrix_set_value(LIS_INS_VALUE, 1, 1-1, -30*beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 1, 1, diag,*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 1, 1+1, 16*beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 1, 1+3, -beta/(12.0*pow(dx,2)),*A);
-    // real
-    lis_matrix_set_value(LIS_INS_VALUE, 2, 2-1, 16*alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2, 2  , diag,*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2, 2+1, -30*alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2, 2+3, 16*alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2, 2+5, -alpha/(12.0*pow(dx,2)),*A);
-    // imag
-    lis_matrix_set_value(LIS_INS_VALUE, 3, (3)-3, 16*beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 3, (3)-1, -30*beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 3, (3)  , diag,*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 3, (3)+1, 16*beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 3, (3)+3, -beta/(12.0*pow(dx,2)),*A);
-
-    for (int i = 2; i < (N-2); i++) {
-      // real
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-3, -alpha/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-1, 16*alpha/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)  , diag,*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+1, -30*alpha/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+3, 16*alpha/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+5, -alpha/(12.0*pow(dx,2)),*A);
-      // imag
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-5, -beta/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-3, 16*beta/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-1, -30*beta/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)  , diag,*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+1, 16*beta/(12.0*pow(dx,2)),*A);
-      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+3, -beta/(12.0*pow(dx,2)),*A);
+    // Set Diag
+    for (int i = 0; i < 2*N; i++) {
+      lis_matrix_set_value(LIS_INS_VALUE, i, i, 2.0/m_header.dt, *A);
     }
 
-    // real
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2), (2*(N-2))-3, -alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2), (2*(N-2))-1, 16*alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2), (2*(N-2))  , diag,*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2), (2*(N-2))+1, -30*alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2), (2*(N-2))+3, 16*alpha/(12.0*pow(dx,2)),*A);
-    // imag
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2)+1, (2*(N-2)+1)-5, -beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2)+1, (2*(N-2)+1)-3, 16*beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2)+1, (2*(N-2)+1)-1, -30*beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2)+1, (2*(N-2)+1)  , diag,*A);
-    lis_matrix_set_value(LIS_INS_VALUE, 2*(N-2)+1, (2*(N-2)+1)+1, 16*beta/(12.0*pow(dx,2)),*A);
-    // real
-    lis_matrix_set_value(LIS_INS_VALUE, (2*(N-1)), (2*(N-1))-3, -alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, (2*(N-1)), (2*(N-1))-1, 16*alpha/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, (2*(N-1)), (2*(N-1)), diag,*A);
-    lis_matrix_set_value(LIS_INS_VALUE, (2*(N-1)), (2*(N-1))+1, -30*alpha/(12.0*pow(dx,2)),*A);
-    // imag
-    lis_matrix_set_value(LIS_INS_VALUE, (2*(N-1)+1), (2*(N-1)+1)-5, -beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, (2*(N-1)+1), (2*(N-1)+1)-3, 16*beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, (2*(N-1)+1), (2*(N-1)+1)-1, -30*beta/(12.0*pow(dx,2)),*A);
-    lis_matrix_set_value(LIS_INS_VALUE, (2*(N-1)+1), (2*(N-1)+1), diag,*A);
+    {
+      int i = 0;
+      // real
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-3+2*N, 0.5*(fun(0,i)+fun(4,i-2+N)), *A ); // Wrap around
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-1+2*N, 0.5*(fun(1,i)+fun(3,i-1+N)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+1, 0.5*fun(2,i), *A);
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+5, 0.5*(fun(4,i)+fun(0,i+2)), *A );
+
+      // imag
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-5+2*N, -0.5*(fun(0,i)+fun(4,i-2+N)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-3+2*N, -0.5*(fun(1,i)+fun(3,i-1+N)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-1, -0.5*fun(2,i), *A);
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+3, -0.5*(fun(4,i)+fun(0,i+2)), *A );
+    }
+
+    {
+      int i = 1;
+      // real
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-3+2*N, 0.5*(fun(0,i)+fun(4,i-2+N)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+1, 0.5*fun(2,i), *A);
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+5, 0.5*(fun(4,i)+fun(0,i+2)), *A );
+
+      // imag
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-5+2*N, -0.5*(fun(0,i)+fun(4,i-2+N)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-1, -0.5*fun(2,i), *A);
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+3, -0.5*(fun(4,i)+fun(0,i+2)), *A );
+    }
+
+    #pragma omp parallel for
+    for (int i = 2; i < (N-2); i++) {
+      // real
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-3, 0.5*(fun(0,i)+fun(4,i-2)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+1, 0.5*fun(2,i), *A);
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+5, 0.5*(fun(4,i)+fun(0,i+2)), *A );
+
+      // imag
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-5, -0.5*(fun(0,i)+fun(4,i-2)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-1, -0.5*fun(2,i), *A);
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+3, -0.5*(fun(4,i)+fun(0,i+2)), *A );
+    }
+
+    {
+      int i = N-2;
+      // real
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-3, 0.5*(fun(0,i)+fun(4,i-2)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+1, 0.5*fun(2,i), *A);
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+5-2*N, 0.5*(fun(4,i)+fun(0,i+2-N)), *A );
+
+      // imag
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-5, -0.5*(fun(0,i)+fun(4,i-2)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-1, -0.5*fun(2,i), *A);
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+3-2*N, -0.5*(fun(4,i)+fun(0,i+2-N)), *A );
+    }
+
+    {
+      int i = N-1;
+      // real
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-3, 0.5*(fun(0,i)+fun(4,i-2)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+1, 0.5*fun(2,i), *A);
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+3-2*N, 0.5*(fun(3,i)+fun(1,i+1-N)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i, (2*i)+5-2*N, 0.5*(fun(4,i)+fun(0,i+2-N)), *A );
+
+      // imag
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-5, -0.5*(fun(0,i)+fun(4,i-2)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)-1, -0.5*fun(2,i), *A);
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+1-2*N, -0.5*(fun(3,i)+fun(1,i+1-N)), *A );
+      lis_matrix_set_value(LIS_INS_VALUE, 2*i+1, (2*i+1)+3-2*N, -0.5*(fun(4,i)+fun(0,i+2-N)), *A );
+    }
 
     lis_matrix_set_type(*A, LIS_MATRIX_CSR);
     if (lis_matrix_assemble(*A)) {
@@ -549,6 +591,11 @@ namespace RT_Solver
     const double dx = m_header.dx;
 
     // Five-Point Stencel prefactors for 1st and 2nd differential
+    const double fps0[] = { 0.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                            0.0 };
     const double fps1[] = { 1.0/(12.0*dx),
                             -8.0/(12.0*dx),
                             0.0,
@@ -561,199 +608,107 @@ namespace RT_Solver
                             -1.0/(12.0*pow(dx,2)) };
 
     // Local functions inserting the prefactor term for 2nd, 1st, 0th derivative
-    auto d2 = [&](int i){ return (1.0 - m_noise[i]); };
-    auto d1 = [&](int i){ return (-m_dx_noise[i]); };
-    auto d0 = [&](int i){ return ( -(0.25*m_dx2_noise[i]
+    const auto d2 = [&](int i){ return (1.0 - m_noise[i]); };
+    const auto d1 = [&](int i){ return (-m_dx_noise[i]); };
+    const auto d0 = [&](int i){ return ( -(0.25*m_dx2_noise[i]
                                      + 1.0/16.0*pow(m_dx_noise[i],2)/(1.0-m_noise[i])) );};
 
-    // Wrap around
-    {
-      int i = 0;
-      // real
-      lis_csr_set_value(A, 2*i, (2*i)-3+(2*N),
-                        alpha*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                               + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
-      lis_csr_set_value(A, 2*i, (2*i)-1+(2*N),
-                        alpha*(fps2[1]*(d2(i-1+N) + d2(i))/2.0
-                               + fps1[1]*(d1(i-1+N) + d1(i))/2.0));
-      // imag
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-5+(2*N),
-                        beta*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                              + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-3+(2*N),
-                        beta*(fps2[1]*(d2(i-1+N) + d2(i))/2.0
-                              + fps1[1]*(d1(i-1+N) + d1(i))/2.0));
+    // Matrix element function
+    const auto fun = [&](int n, int i) {
+                 return alpha*(fps2[n]*d2(i) + fps1[n]*d1(i) + fps0[n]*d0(i));
+               };
 
-      i = 1;
-      // real
-      lis_csr_set_value(A, 2*i, (2*i)-3+(2*N),
-                        alpha*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                               + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
-      // imag
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-5+(2*N),
-                        beta*(fps2[0]*(d2(i-2+N) + d2(i))/2.0
-                              + fps1[0]*(d1(i-2+N) + d1(i))/2.0));
-      i = N-2;
-      // real
-      lis_csr_set_value(A, 2*i, (2*i)+5-(2*N),
-                        alpha*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                               + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
-      // imag
-      lis_csr_set_value(A, 2*i+1, (2*i+1)+3-(2*N),
-                        beta*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                              + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
+    // Five-Point-Stencil difference scheme
 
-      i = N-1;
-      // real
-      lis_csr_set_value(A, 2*i, (2*i)+3-(2*N),
-                        alpha*(fps2[1]*(d2(i+1-N) + d2(i))/2.0
-                               + fps1[2]*(d1(i+1-N) + d1(i))/2.0));
-      lis_csr_set_value(A, 2*i, (2*i)+5-(2*N),
-                        alpha*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                               + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
-      // imag
-      lis_csr_set_value(A, 2*i+1, (2*i+1)+1-(2*N),
-                        beta*(fps2[1]*(d2(i+1-N) + d2(i))/2.0
-                              + fps1[2]*(d1(i+1-N) + d1(i))/2.0));
-      lis_csr_set_value(A, 2*i+1, (2*i+1)+3-(2*N),
-                        beta*(fps2[0]*(d2(i+2-N) + d2(i))/2.0
-                              + fps1[3]*(d1(i+2-N) + d1(i))/2.0));
-    }
-
+    // Set Diag
     for (int i = 0; i < 2*N; i++) {
       lis_csr_set_value(A, i, i, 2.0/m_header.dt);
     }
 
-    // Five-Point-Stencil difference scheme
-    // real
-    lis_csr_set_value(A, 0, 0+1,
-                      alpha*(fps2[2]*d2(0)
-                             + d0(0)));
-    lis_csr_set_value(A, 0, 0+3,
-                      alpha*(fps2[1]*(d2(0+1) + d2(0))/2.0
-                             + fps1[2]*(d1(0+1) + d1(0))/2.0));
-    lis_csr_set_value(A, 0, 0+5,
-                      alpha*(fps2[0]*(d2(0+2) + d2(0))/2.0
-                             + fps1[3]*(d1(0+2) + d1(0))/2.0));
-    // imag
-    lis_csr_set_value(A, 1, 1-1,
-                      beta*(fps2[2]*d2(0)
-                            + d0(0)));
-    lis_csr_set_value(A, 1, 1+1,
-                      beta*(fps2[1]*(d2(0+1) + d2(0))/2.0
-                            + fps1[2]*(d1(0+1) + d1(0))/2.0));
-    lis_csr_set_value(A, 1, 1+3,
-                      beta*(fps2[0]*(d2(0+2) + d2(0))/2.0
-                            + fps1[3]*(d1(0+2) + d1(0))/2.0));
-    // real
-    lis_csr_set_value(A, 2, 2-1,
-                      alpha*(fps2[1]*(d2(1-1) + d2(1))/2.0
-                             + fps1[1]*(d1(1-1) + d1(1))/2.0));
-    lis_csr_set_value(A, 2, 2+1,
-                      alpha*(fps2[2]*d2(1)
-                             + d0(1)));
-    lis_csr_set_value(A, 2, 2+3,
-                      alpha*(fps2[1]*(d2(1+1) + d2(1))/2.0
-                             + fps1[2]*(d1(1+1) + d1(1))/2.0));
-    lis_csr_set_value(A, 2, 2+5,
-                      alpha*(fps2[0]*(d2(1+2) + d2(1))/2.0
-                             + fps1[3]*(d1(1+2) + d1(1))/2.0));
-    // imag
-    lis_csr_set_value(A, 3, 3-3,
-                      beta*(fps2[1]*(d2(1-1) + d2(1))/2.0
-                            + fps1[1]*(d1(1-1) + d1(1))/2.0));
-    lis_csr_set_value(A, 3, 3-1,
-                      beta*(fps2[2]*d2(1)
-                            + d0(1)));
-    lis_csr_set_value(A, 3, 3+1,
-                      beta*(fps2[1]*(d2(1+1) + d2(1))/2.0
-                            + fps1[2]*(d1(1+1) + d1(1))/2.0));
-    lis_csr_set_value(A, 3, 3+3,
-                      beta*(fps2[0]*(d2(1+2) + d2(1))/2.0
-                            + fps1[3]*(d1(1+2) + d1(1))/2.0));
+    {
+      int i = 0;
+      // real
+      lis_csr_set_value(A, 2*i, (2*i)-3+2*N, 0.5*(fun(0,i)+fun(4,i-2+N)) ); // Wrap around
+      lis_csr_set_value(A, 2*i, (2*i)-1+2*N, 0.5*(fun(1,i)+fun(3,i-1+N)) );
+      lis_csr_set_value(A, 2*i, (2*i)+1, 0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)) );
+      lis_csr_set_value(A, 2*i, (2*i)+5, 0.5*(fun(4,i)+fun(0,i+2)) );
+
+      // imag
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-5+2*N, -0.5*(fun(0,i)+fun(4,i-2+N)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-3+2*N, -0.5*(fun(1,i)+fun(3,i-1+N)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)+3, -0.5*(fun(4,i)+fun(0,i+2)) );
+    }
+
+    {
+      int i = 1;
+      // real
+      lis_csr_set_value(A, 2*i, (2*i)-3+2*N, 0.5*(fun(0,i)+fun(4,i-2+N)) );
+      lis_csr_set_value(A, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)) );
+      lis_csr_set_value(A, 2*i, (2*i)+1, 0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)) );
+      lis_csr_set_value(A, 2*i, (2*i)+5, 0.5*(fun(4,i)+fun(0,i+2)) );
+
+      // imag
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-5+2*N, -0.5*(fun(0,i)+fun(4,i-2+N)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)+3, -0.5*(fun(4,i)+fun(0,i+2)) );
+    }
 
     #pragma omp parallel for
     for (int i = 2; i < (N-2); i++) {
       // real
-      lis_csr_set_value(A, 2*i, (2*i)-3,
-                        alpha*(fps2[0]*(d2(i-2) + d2(i))/2.0
-                               + fps1[0]*(d1(i-2) + d1(i))/2.0));
-      lis_csr_set_value(A, 2*i, (2*i)-1,
-                        alpha*(fps2[1]*(d2(i-1) + d2(i))/2.0
-                               + fps1[1]*(d1(i-1) + d1(i))/2.0));
-      lis_csr_set_value(A, 2*i, (2*i)+1,
-                        alpha*(fps2[2]*d2(i)
-                               + d0(i)));
-      lis_csr_set_value(A, 2*i, (2*i)+3,
-                        alpha*(fps2[3]*(d2(i+1) + d2(i))/2.0
-                               + fps1[3]*(d1(i+1) + d1(i))/2.0));
-      lis_csr_set_value(A, 2*i, (2*i)+5,
-                        alpha*(fps2[4]*(d2(i+2) + d2(i))/2.0
-                               + fps1[4]*(d1(i+2) + d1(i))/2.0));
+      lis_csr_set_value(A, 2*i, (2*i)-3, 0.5*(fun(0,i)+fun(4,i-2)) );
+      lis_csr_set_value(A, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)) );
+      lis_csr_set_value(A, 2*i, (2*i)+1, 0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)) );
+      lis_csr_set_value(A, 2*i, (2*i)+5, 0.5*(fun(4,i)+fun(0,i+2)) );
+
       // imag
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-5,
-                        beta*(fps2[0]*(d2(i-2) + d2(i))/2.0
-                              + fps1[0]*(d1(i-2) + d1(i))/2.0));
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-3,
-                        beta*(fps2[1]*(d2(i-1) + d2(i))/2.0
-                              + fps1[1]*(d1(i-1) + d1(i))/2.0));
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-1,
-                        beta*(fps2[2]*d2(i)
-                              + d0(i)));
-      lis_csr_set_value(A, 2*i+1, (2*i+1)+1,
-                        beta*(fps2[3]*(d2(i+1) + d2(i))/2.0
-                              + fps1[3]*(d1(i+1) + d1(i))/2.0));
-      lis_csr_set_value(A, 2*i+1, (2*i+1)+3,
-                        beta*(fps2[4]*(d2(i+2) + d2(i))/2.0
-                              + fps1[4]*(d1(i+2) + d1(i))/2.0));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-5, -0.5*(fun(0,i)+fun(4,i-2)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)+3, -0.5*(fun(4,i)+fun(0,i+2)) );
     }
 
-    // real
-    lis_csr_set_value(A, (2*(N-2)), (2*(N-2))-3,
-                      alpha*(fps2[0]*(d2((N-2)-2) + d2((N-2)))/2.0
-                             + fps1[0]*(d1((N-2)-2) + d1((N-2)))/2.0));
-    lis_csr_set_value(A, (2*(N-2)), (2*(N-2))-1,
-                      alpha*(fps2[1]*(d2((N-2)-1) + d2((N-2)))/2.0
-                             + fps1[1]*(d1((N-2)-1) + d1((N-2)))/2.0));
-    lis_csr_set_value(A, (2*(N-2)), (2*(N-2))+1,
-                      alpha*(fps2[2]*d2(N-2)
-                             + d0(N-2)));
-    lis_csr_set_value(A, (2*(N-2)), (2*(N-2))+3,
-                      alpha*(fps2[1]*(d2(N-2+1) + d2(N-2))/2.0
-                             + fps1[2]*(d1(N-2+1) + d1(N-2))/2.0));
-    // imag
-    lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)-5,
-                      beta*(fps2[0]*(d2(N-2-2) + d2(N-2))/2.0
-                            + fps1[0]*(d1(N-2-2) + d1(N-2))/2.0));
-    lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)-3,
-                      beta*(fps2[1]*(d2(N-2-2) + d2(N-2))/2.0
-                            + fps1[1]*(d1(N-2-2) + d1(N-2))/2.0));
-    lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)-1,
-                      beta*(fps2[2]*d2(N-2)
-                            + d0(N-2)));
-    lis_csr_set_value(A, (2*(N-2)+1), (2*(N-2)+1)+1,
-                      beta*(fps2[1]*(d2(N-2+1) + d2(N-2))/2.0
-                            + fps1[2]*(d1(N-2+1) + d1(N-2))/2.0));
-    // real
-    lis_csr_set_value(A, (2*(N-1)), (2*(N-1))-3,
-                      alpha*(fps2[0]*(d2(N-1-2) + d2(N-1))/2.0
-                             + fps1[0]*(d1(N-1-2) + d1(N-1))/2.0));
-    lis_csr_set_value(A, (2*(N-1)), (2*(N-1))-1,
-                      alpha*(fps2[1]*(d2(N-1-1) + d2(N-1))/2.0
-                             + fps1[1]*(d1(N-1-1) + d1(N-1))/2.0));
-    lis_csr_set_value(A, (2*(N-1)), (2*(N-1))+1,
-                      alpha*(fps2[2]*d2(N-1)
-                             + d0(N-1)));
-    // imag
-    lis_csr_set_value(A, (2*(N-1)+1), (2*(N-1)+1)-5,
-                      beta*(fps2[0]*(d2(N-1-2) + d2(N-1))/2.0
-                            + fps1[0]*(d1(N-1-2) + d1(N-1))/2.0));
-    lis_csr_set_value(A, (2*(N-1)+1), (2*(N-1)+1)-3,
-                      beta*(fps2[1]*(d2(N-1-1) + d2(N-1))/2.0
-                            + fps1[1]*(d1(N-1-1) + d1(N-1))/2.0));
-    lis_csr_set_value(A, (2*(N-1)+1), (2*(N-1)+1)-1,
-                      beta*(fps2[2]*d2(N-1)
-                            + d0(N-1)));
+    {
+      int i = N-2;
+      // real
+      lis_csr_set_value(A, 2*i, (2*i)-3, 0.5*(fun(0,i)+fun(4,i-2)) );
+      lis_csr_set_value(A, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)) );
+      lis_csr_set_value(A, 2*i, (2*i)+1, 0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)) );
+      lis_csr_set_value(A, 2*i, (2*i)+5-2*N, 0.5*(fun(4,i)+fun(0,i+2-N)) );
+
+      // imag
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-5, -0.5*(fun(0,i)+fun(4,i-2)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)+3-2*N, -0.5*(fun(4,i)+fun(0,i+2-N)) );
+    }
+
+    {
+      int i = N-1;
+      // real
+      lis_csr_set_value(A, 2*i, (2*i)-3, 0.5*(fun(0,i)+fun(4,i-2)) );
+      lis_csr_set_value(A, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)) );
+      lis_csr_set_value(A, 2*i, (2*i)+1, 0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i, (2*i)+3-2*N, 0.5*(fun(3,i)+fun(1,i+1-N)) );
+      lis_csr_set_value(A, 2*i, (2*i)+5-2*N, 0.5*(fun(4,i)+fun(0,i+2-N)) );
+
+      // imag
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-5, -0.5*(fun(0,i)+fun(4,i-2)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)+1-2*N, -0.5*(fun(3,i)+fun(1,i+1-N)) );
+      lis_csr_set_value(A, 2*i+1, (2*i+1)+3-2*N, -0.5*(fun(4,i)+fun(0,i+2-N)) );
+    }
   }
 
   /** Wrapper function for Do_Noise_Step_half.
@@ -787,13 +742,15 @@ namespace RT_Solver
     m_x->value = reinterpret_cast<double*>(psi);
     err = lis_matvec(m_cn_rA, m_x, m_b);
 
-    // if (myiter < 3) {
-    //   char * my_argument = const_cast<char*> (("rmatrix-"+to_string(myiter)+".txt").c_str());
-    //   lis_output_matrix(m_cn_rA, LIS_FMT_MM, my_argument);
-    //   char * my_argument2 = const_cast<char*> (("lmatrix-"+to_string(myiter)+".txt").c_str());
-    //   lis_output_matrix(m_cn_lA, LIS_FMT_MM, my_argument2);
-    //   myiter++;
-    // }
+    if (myiter < 3) {
+      char * my_argument = strdup(("rmatrix-"+to_string(myiter)+".txt").c_str());
+      lis_output_matrix(m_cn_rA, LIS_FMT_MM, my_argument);
+      char * my_argument2 = strdup(("lmatrix-"+to_string(myiter)+".txt").c_str());
+      lis_output_matrix(m_cn_lA, LIS_FMT_MM, my_argument2);
+      myiter++;
+      free(my_argument);
+      free(my_argument2);
+    }
 
     if (err) {
       cout << "ERROR: lis_matvec" << endl;
@@ -814,6 +771,11 @@ namespace RT_Solver
     lis_solver_get_iterex(m_solver,&iter,&iter_double,&iter_quad);
     lis_solver_get_timeex(m_solver,&time,&itime,&ptime,&p_c_time,&p_i_time);
     lis_solver_get_residualnorm(m_solver,&resid);
+
+    if (iter > 5) {
+      cout << "Time: " << m_header.t << ", Iter: " << iter << endl;
+
+    }
     if (iter > 1000) {
       cout << "Error: Iter too high" << endl;
       cout << "Time: " << m_header.t << ", Iter: " << iter << endl;
@@ -821,26 +783,14 @@ namespace RT_Solver
     }
   }
 
+  void CRT_Propagation_1D::set_noise(sequence_item& seq, int64_t t) {
+      int64_t NT = static_cast<int64_t>(floor(t/noise_data->dt+0.5));
+      int nSteps = static_cast<int>(floor(seq.dt/noise_data->dt+0.5));
+      assert(nSteps > 0);
 
-  /** Half step with metric noise is performed on all wavefunctions.
-   *
-   */
-  void CRT_Propagation_1D::Do_Noise_Step_half(sequence_item& seq) {
-    bool update_noise = fmod(round(fabs(10*m_header.t/m_header.dt)), 10) == 0;
-    // Sanity Check, bool should alternate
-    static bool last_bool = false;
-    assert(last_bool != update_noise);
-    last_bool = update_noise;
-
-    if ((not no_noise_run) && update_noise) // update noise every fullstep
-    {
       for (int i = 0; i < m_no_of_pts; i++) {
         m_noise[i] = 0.0;
       }
-
-      int64_t NT = static_cast<int64_t>(floor(m_header.t/noise_data->dt+0.5));
-      int nSteps = static_cast<int>(floor(seq.dt/noise_data->dt+0.5));
-      assert(nSteps > 0);
 
       for (int j = 0; j < nSteps; j++) {
         const double* noise = noise_data->Get_Noise(NT+j);
@@ -861,12 +811,26 @@ namespace RT_Solver
       for (int i = 0; i < m_no_of_pts; i++) {
         m_dx2_noise[i] = diff_noise[i];
       }
+  }
 
-      // set_cn_matrix_with_metric_noise(m_cn_rA, -1);
-      // set_cn_matrix_with_metric_noise(m_cn_lA, +1);
-    }
+  /** Half step with metric noise is performed on all wavefunctions.
+   *
+   */
+  void CRT_Propagation_1D::Do_Noise_Step_half(sequence_item& seq) {
+    bool update_noise = fmod(round(fabs(10*m_header.t/m_header.dt)), 10) == 0;
+    // Sanity Check, bool should alternate
+    static bool last_bool = false;
+    assert(last_bool != update_noise);
+    last_bool = update_noise;
+
     if (update_noise) {
+      if (not no_noise_run) {
+        set_noise(seq, m_header.t);
+      }
       set_cn_matrix_with_metric_noise(m_cn_rA, -1);
+      if (not no_noise_run) {
+        set_noise(seq, m_header.t+m_header.dt);
+      }
       set_cn_matrix_with_metric_noise(m_cn_lA, +1);
     }
 

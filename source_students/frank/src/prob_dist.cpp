@@ -37,6 +37,13 @@
 
 using namespace std;
 
+string removeExtension( const string& filename )
+{
+  size_t lastdot = filename.find_last_of(".");
+  if (lastdot == string::npos) return filename;
+  return filename.substr(0, lastdot);
+}
+
 int main(int argc, char *argv[])
 {
   if( argc < 2 )
@@ -102,7 +109,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  ofstream file1( "prob_dist.txt");
+  ofstream file1( "prob_dist_" + removeExtension(string(argv[1])) + ".txt");
   for (int i = 0; i < N; i++) {
     file1 << min_val+i*dn << "\t" << prob_dist[i]/static_cast<double>(header.nDimX*header.nDimY) << endl;
   }
