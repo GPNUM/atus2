@@ -32,7 +32,7 @@ The following third party packages are included in the source tree:
 
 * pugixml (http://pugixml.org/)
 * String Toolkit (http://www.partow.net/programming/strtk/index.html)
-* AnyOption (https://github.com/hackorama/AnyOption)
+* CXXOPTS (https://github.com/jarro2783/cxxopts)
 
 
 ## **Installation**
