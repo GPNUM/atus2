@@ -25,16 +25,18 @@
 #include <cstdlib>
 #include <cmath>
 #include <omp.h>
-#include "anyoption.h"
+#include <fstream>
+#include "cxxopts.hpp"
 #include "fftw3.h"
 #include "my_structs.h"
+
+using namespace std;
 
 enum
 {
   O_FIX = 0x01,
   O_FAK = 0x02
 };
-
 
 void inflate_3d_fix( fftw_complex *field_old, generic_header *header_old, fftw_complex *field_new, generic_header *header_new, const int fak )
 {
@@ -224,48 +226,68 @@ void inflate_1d( fftw_complex *field_old, generic_header *header_old, fftw_compl
 
 int main(int argc, char *argv[])
 {
-  int fak=-1, options=0;
-
+  int fak=-1, flags=0;
   string filename, filename2;
 
-  AnyOption *opt = new AnyOption();
-  opt->noPOSIX();
-  //opt->setVerbose();
-  //opt->autoUsagePrint(true);
+  cxxopts::Options options("inflate_domain", "\nInflate the domain of the wave function.\n");
 
+  options.add_options()
+  ("f,fak",  "Fix x coord. for slices at index i", cxxopts::value<int>()->default_value("-1") )
+  ("g,fix",  "Fix y coord. for slices at index j", cxxopts::value<int>()->default_value("-1") )
+  ("positional", "Positional arguments: these are the arguments that are entered without an option", cxxopts::value<std::vector<std::string>>())
+  ("help","Print help")
+  ;
+  
+  options.parse_positional({"positional"});
+  auto result = options.parse(argc, argv);
+
+  try
+  {
+    if (result.count("") == 0)
+    {
+      std::cout << options.help({""}) << std::endl;
+      return EXIT_FAILURE;
+    }
+
+    if( result.count("positional") > 0 )
+    {
+      filename = result["positional"].as<std::vector<std::string>>()[0]; 
+    }
+    else
+    {        
+      std::cout << "error parsing options: missing file name" << std::endl;
+      return EXIT_FAILURE;
+    }
+
+    if( result["fak"].as<int>() != -1 )
+    {
+      fak = result["fak"].as<int>();
+      flags |= O_FAK;
+    }
+    if( result["fix"].as<int>() != -1 )
+    {
+      fak = result["fix"].as<int>();
+      flags |= O_FIX;
+    }
+    if( result["fak"].as<int>() == result["fix"].as<int>() )
+    {
+      cout << "Hmmm" << endl;
+      return EXIT_FAILURE;
+    }
+  }
+  catch (const cxxopts::OptionException& e)
+  {
+    std::cout << "error parsing options: " << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
+
+
+/*
   opt->addUsage( "" );
-  opt->addUsage( "Usage: inflate_domain [options] filename" );
   opt->addUsage( "--fak integer		" );
   opt->addUsage( "--fix			inflate with fixed number of points" );
 
-  opt->setFlag( "help" );
-  opt->setOption( "fix" );
-  opt->setOption( "fak" );
-
-  opt->processCommandArgs( argc, argv );
-
-  if ( opt->getFlag("help") ) opt->printUsage();
-  if ( opt->getValue("fak") != nullptr )
-  {
-    fak = atoi(opt->getValue("fak"));
-    options |= O_FAK;
-  };
-  if ( opt->getValue("fix") != nullptr )
-  {
-    fak = atoi(opt->getValue("fix"));
-    options |= O_FIX;
-  };
-
-  if ( opt->getArgc() != 0 ) filename = opt->getArgv(0);
-  else opt->printUsage();
-
-  delete opt;
-
-  if ( !(options & (O_FAK|O_FIX)) )
-  {
-    opt->printUsage();
-    return EXIT_FAILURE;
-  }
+*/
 
   int no_of_threads = 4;
   char *envstr = getenv("MY_NO_OF_THREADS" );
@@ -321,7 +343,7 @@ int main(int argc, char *argv[])
     in.read( (char *)field_old, header_old.nDatatyp*Nges );
     in.close();
 
-    if ( options & O_FIX )
+    if ( flags & O_FIX )
     {
       Nges2 = Nges;
       field_new = (fftw_complex *)fftw_malloc( header_old.nDatatyp*Nges2 );
@@ -355,7 +377,7 @@ int main(int argc, char *argv[])
     in.read( (char *)field_old, header_old.nDatatyp*Nges );
     in.close();
 
-    if ( options & O_FIX )
+    if ( flags & O_FIX )
     {
       Nges2 = Nges;
       field_new = (fftw_complex *)fftw_malloc( header_old.nDatatyp*Nges2 );
@@ -389,7 +411,7 @@ int main(int argc, char *argv[])
     in.read( (char *)field_old, header_old.nDatatyp*Nges );
     in.close();
 
-    if ( options & O_FIX )
+    if ( flags & O_FIX )
     {
       // Nges2 = Nges;
       // field_new = (fftw_complex*)fftw_malloc( header_old.nDatatyp*Nges2 );

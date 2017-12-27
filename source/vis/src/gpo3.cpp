@@ -466,6 +466,7 @@ int main(int argc, char *argv[])
   ("b,im",  "output imag part of a complex wave function", cxxopts::value<bool>()->default_value("false") )
   ("p,ph",  "output phase of a complex wave function", cxxopts::value<bool>()->default_value("false") )
   ("positional", "Positional arguments: these are the arguments that are entered without an option", cxxopts::value<std::vector<std::string>>())
+  ("help","Print help")
   ;
   
   options.parse_positional({"positional"});
@@ -475,7 +476,13 @@ int main(int argc, char *argv[])
 
   try
   {
-    if( result["positional"].as<std::vector<std::string>>().size() > 0 )
+    if (result.count("") == 0)
+    {
+      std::cout << options.help({""}) << std::endl;
+      return EXIT_FAILURE;
+    }
+
+    if( result.count("positional") > 0 )
     {
       filename = result["positional"].as<std::vector<std::string>>()[0]; 
     }
