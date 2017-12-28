@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     data1[i][1] -= data2[i][1];
   }
 
-  ofstream foutput("diff.bin", ofstream::binary);
+  ofstream foutput(string(argv[1]) + "-diff.bin", ofstream::binary);
   foutput.write(reinterpret_cast<char*>(&header1), sizeof(generic_header));
   foutput.write(reinterpret_cast<char*>(data1), sizeof(fftw_complex)*nDimXYZ);
   foutput.close();
