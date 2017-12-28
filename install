@@ -53,6 +53,7 @@
                                    *default-user-module-dir*)))
 (defparameter *make-threads* (or (get-arg "-j") 1))
 (defparameter *packages* nil)
+(defparameter *non-interactive-p* (arg-exist-p "-n"))
 
 (defun download (url)
   (run (format nil "curl -LO ~a" url)))
@@ -408,7 +409,11 @@ prepend-path LD_RUN_PATH     $path/lib64
                           User Default:   ~a
 --module-dir DIR      Module directory
                           System Default: ~a
-                          User Default:   ~a~%~%"
+                          User Default:   ~a
+--no-update-shell     Skip shell config update
+-n PACKAGES           Non-interactive Mode
+                          Install PACKAGES
+                          Updates shell config [default=yes]~%~%"
           *default-system-build-dir* *default-user-build-dir*
           *default-system-install-dir* *default-user-install-dir*
           *default-system-module-dir*  *default-user-module-dir*))
@@ -447,14 +452,16 @@ prepend-path LD_RUN_PATH     $path/lib64
         (shell-config-file (if (string= (pathname-name (uiop:getenv "SHELL")) "zsh")
                                ".zshrc"
                                ".bashrc")))
-    (when (yes-or-no-p "Should I append the following text to your ~a?~%~a~%"
-                       shell-config-file module-path)
+    (when (or *non-interactive-p*
+              (yes-or-no-p "Should I append the following text to your ~a?~%~a~%"
+                       shell-config-file module-path))
       (with-open-file (out (merge-pathnames shell-config-file
                                             (user-homedir-pathname))
                            :direction :output
                            :if-exists :append
                            :if-does-not-exist :create)
-        (format out "~&~a~%" module-path)))))
+        (format out "~&~a~%" module-path))
+      (format t "Shell config update."))))
 
 (defun main ()
   (display-logo)
@@ -476,7 +483,9 @@ q - Abort Installation.
         :for index :below (length *packages*)
         :append (list index (string-downcase (name package)))))
 
-  (let* ((selection (read-line t nil))
+  (let* ((selection (if *non-interactive-p*
+                        (get-arg "-n")
+                        (read-line t nil)))
          (requested-packages (collect-selected-packages selection)))
     ;;;; Test for Quit condition
     (when (or (null selection) (find #\q selection))
@@ -493,7 +502,7 @@ q - Abort Installation.
 
     (format t "~%Installation finished.~%")
 
-    (unless (arg-exist-p "--no-modules")
+    (unless (or (arg-exist-p "--no-modules") (arg-exist-p "--no-update-shell"))
       (update-shell-config))))
 
 (with-open-file (log "install.log" :direction :output :if-does-not-exist :create :if-exists :supersede)
