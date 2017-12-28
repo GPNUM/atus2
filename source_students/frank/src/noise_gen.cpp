@@ -135,8 +135,10 @@ int main(int argc, char *argv[])
   const double end_size = header.nDimX*header.nDimY*sizeof(double)/pow(1024,3);
   cout << "Memory: Runtime "<< runtime_size << "GB, End " << end_size << "GB\n" << endl;
 
-  const double chunk_x = fabs(header.xMax-header.xMin)/10.0;
+  const double chunk_x = fabs(header.xMax-header.xMin)/fabs(no_of_chunks)/10.0;
   const double chunk_y = fabs(header.yMax-header.yMin)/10.0;
+  cout << "chunk_x: " << chunk_x << ", x " << chunk_x*header.dx << endl;
+  cout << "chunk_y: " << chunk_y << ", y " << chunk_y*header.dy << endl;
 //  vector<double> corr_length = {1000,1000};
   vector<double> corr_length = {chunk_x,chunk_y};
 

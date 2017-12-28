@@ -253,6 +253,7 @@ namespace RT_Solver
 
     ofstream m_oftotal;
     bool no_noise_run;
+    double dt;
   };
 
 
@@ -263,14 +264,11 @@ namespace RT_Solver
       cout << "No Noise Run" << endl;
     }
     m_oftotal.open("total.txt");
-    double dt = 0.0;
-    double duration = 0.0;
+    dt = m_params->m_sequence.front().dt;
     for (auto seq_item : m_params->m_sequence) {
-      dt = seq_item.dt;
-      duration += seq_item.duration.front();
+      //      dt = seq_item.dt;
       cout << "Chirps = " << seq_item.no_of_chirps << endl;
     }
-    int NT = duration/dt;
 
     m_noise.resize(m_no_of_pts);
     m_dx_noise.resize(m_no_of_pts);
@@ -311,7 +309,7 @@ namespace RT_Solver
     init_cn_matrix(&m_cn_rA, N, 2.0/dt, -alpha, dx);
     init_cn_matrix(&m_cn_lA, N, 2.0/dt, alpha, dx);
     lis_solver_create(&m_solver);
-    char *lis_options = (char*)"-i gmres -maxiter 10000";
+    char *lis_options = (char*)"-i gmres -maxiter 1000";
     lis_solver_set_option(lis_options, m_solver );
 
     if (no_noise_run) {
@@ -630,14 +628,14 @@ namespace RT_Solver
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3+2*N, 0.5*(fun(0,i)+fun(4,i-2+N)) ); // Wrap around
       lis_csr_set_value(A, 2*i, (2*i)-1+2*N, 0.5*(fun(1,i)+fun(3,i-1+N)) );
-      lis_csr_set_value(A, 2*i, (2*i)+1, 0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i, (2*i)+1, fun(2,i));
       lis_csr_set_value(A, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)) );
       lis_csr_set_value(A, 2*i, (2*i)+5, 0.5*(fun(4,i)+fun(0,i+2)) );
 
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5+2*N, -0.5*(fun(0,i)+fun(4,i-2+N)) );
       lis_csr_set_value(A, 2*i+1, (2*i+1)-3+2*N, -0.5*(fun(1,i)+fun(3,i-1+N)) );
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -fun(2,i));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)) );
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3, -0.5*(fun(4,i)+fun(0,i+2)) );
     }
@@ -647,14 +645,14 @@ namespace RT_Solver
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3+2*N, 0.5*(fun(0,i)+fun(4,i-2+N)) );
       lis_csr_set_value(A, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)) );
-      lis_csr_set_value(A, 2*i, (2*i)+1, 0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i, (2*i)+1, fun(2,i));
       lis_csr_set_value(A, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)) );
       lis_csr_set_value(A, 2*i, (2*i)+5, 0.5*(fun(4,i)+fun(0,i+2)) );
 
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5+2*N, -0.5*(fun(0,i)+fun(4,i-2+N)) );
       lis_csr_set_value(A, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)) );
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -fun(2,i));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)) );
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3, -0.5*(fun(4,i)+fun(0,i+2)) );
     }
@@ -664,14 +662,14 @@ namespace RT_Solver
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3, 0.5*(fun(0,i)+fun(4,i-2)) );
       lis_csr_set_value(A, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)) );
-      lis_csr_set_value(A, 2*i, (2*i)+1, 0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i, (2*i)+1, fun(2,i));
       lis_csr_set_value(A, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)) );
       lis_csr_set_value(A, 2*i, (2*i)+5, 0.5*(fun(4,i)+fun(0,i+2)) );
 
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5, -0.5*(fun(0,i)+fun(4,i-2)) );
       lis_csr_set_value(A, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)) );
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -fun(2,i));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)) );
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3, -0.5*(fun(4,i)+fun(0,i+2)) );
     }
@@ -681,14 +679,14 @@ namespace RT_Solver
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3, 0.5*(fun(0,i)+fun(4,i-2)) );
       lis_csr_set_value(A, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)) );
-      lis_csr_set_value(A, 2*i, (2*i)+1, 0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i, (2*i)+1, fun(2,i));
       lis_csr_set_value(A, 2*i, (2*i)+3, 0.5*(fun(3,i)+fun(1,i+1)) );
       lis_csr_set_value(A, 2*i, (2*i)+5-2*N, 0.5*(fun(4,i)+fun(0,i+2-N)) );
 
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5, -0.5*(fun(0,i)+fun(4,i-2)) );
       lis_csr_set_value(A, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)) );
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -fun(2,i));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+1, -0.5*(fun(3,i)+fun(1,i+1)) );
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3-2*N, -0.5*(fun(4,i)+fun(0,i+2-N)) );
     }
@@ -698,14 +696,14 @@ namespace RT_Solver
       // real
       lis_csr_set_value(A, 2*i, (2*i)-3, 0.5*(fun(0,i)+fun(4,i-2)) );
       lis_csr_set_value(A, 2*i, (2*i)-1, 0.5*(fun(1,i)+fun(3,i-1)) );
-      lis_csr_set_value(A, 2*i, (2*i)+1, 0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i, (2*i)+1, fun(2,i));
       lis_csr_set_value(A, 2*i, (2*i)+3-2*N, 0.5*(fun(3,i)+fun(1,i+1-N)) );
       lis_csr_set_value(A, 2*i, (2*i)+5-2*N, 0.5*(fun(4,i)+fun(0,i+2-N)) );
 
       // imag
       lis_csr_set_value(A, 2*i+1, (2*i+1)-5, -0.5*(fun(0,i)+fun(4,i-2)) );
       lis_csr_set_value(A, 2*i+1, (2*i+1)-3, -0.5*(fun(1,i)+fun(3,i-1)) );
-      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -0.5*fun(2,i));
+      lis_csr_set_value(A, 2*i+1, (2*i+1)-1, -fun(2,i));
       lis_csr_set_value(A, 2*i+1, (2*i+1)+1-2*N, -0.5*(fun(3,i)+fun(1,i+1-N)) );
       lis_csr_set_value(A, 2*i+1, (2*i+1)+3-2*N, -0.5*(fun(4,i)+fun(0,i+2-N)) );
     }
@@ -772,13 +770,10 @@ namespace RT_Solver
     lis_solver_get_timeex(m_solver,&time,&itime,&ptime,&p_c_time,&p_i_time);
     lis_solver_get_residualnorm(m_solver,&resid);
 
-    if (iter > 5) {
-      cout << "Time: " << m_header.t << ", Iter: " << iter << endl;
-
-    }
     if (iter > 1000) {
       cout << "Error: Iter too high" << endl;
       cout << "Time: " << m_header.t << ", Iter: " << iter << endl;
+      cout << "Res: " << resid << endl;
       exit(EXIT_FAILURE);
     }
   }
@@ -822,6 +817,7 @@ namespace RT_Solver
     static bool last_bool = false;
     assert(last_bool != update_noise);
     last_bool = update_noise;
+    dt = seq.dt;
 
     if (update_noise) {
       if (not no_noise_run) {
