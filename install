@@ -276,7 +276,7 @@ Otherwise returns nil. Test is done via equal."
         ((uiop:ensure-directory-pathname (remove-tgz-filetype (file-namestring url))))
       (uiop:chdir (uiop:ensure-pathname (format nil "~abuild/" (uiop:getcwd))
                                         :ensure-directory t :ensure-directories-exist t))
-      (run (format nil "cmake -DCMAKE_INSTALL_PREFIX=~a~a -DCMAKE_BUILD_TYPE=Release -DVTK_Group_Rendering=OFF -DVTK_RENDERING_BACKEND=None\\
+      (run (format nil "cmake -DCMAKE_INSTALL_PREFIX=~a~a -DCMAKE_BUILD_TYPE=Release -DVTK_Group_Rendering=OFF -DVTK_RENDERING_BACKEND=None \\
 ~@[-DCMAKE_C_COMPILER=~a~] ~@[-DCMAKE_CXX_COMPILER=~a~] \\
 .."
                    *install-dir* full-name *CC* *CXX*))
