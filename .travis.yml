@@ -1,0 +1,11 @@
+sudo: required
+language: cpp
+services:
+  - docker
+before_install:
+  - docker pull zelim/atus2:latest
+  - docker run -it -d --name build_atus2 zelim/atus2 /bin/bash 
+  - docker exec build_atus2 git clone https://github.com/GPNUM/atus2.git
+  - docker exec -t -i build_atus2 /bin/bash -c 'source /root/.bashrc && cmake -H/atus2 -B/_build'
+script:
+  - docker exec build_atus2 cmake --build /_build
