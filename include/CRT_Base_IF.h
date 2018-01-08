@@ -739,6 +739,12 @@ void CRT_Base_IF<T,dim,no_int_states>::run_sequence()
 
     if ( seq.name == "freeprop" ) seq.no_of_chirps=1;
     double backup_t = m_header.t;
+    double backup_end_t = m_header.t;
+    for ( int k=0; k<no_int_states; k++ ) // Delete old packed Sequence
+    {
+      sprintf( filename, "Seq_%d_%d.bin", seq_counter, k+1 );
+      std::remove(filename);
+    }
 
     m_chirps_list.clear();
 
@@ -746,6 +752,11 @@ void CRT_Base_IF<T,dim,no_int_states>::run_sequence()
 
     if (seq.no_of_chirps > 1)
     {
+      for ( int k=0; k<no_int_states; k++ ) // Save Wavefunction to reset per chirp
+      {
+        sprintf( filename, "%.3f_%d.bin", this->Get_t(), k+1 );
+        this->Save_Phi( filename, k );
+      }
       dw[0] = seq.chirp_min;
       dw[1] = seq.chirp_max;
     }
@@ -774,12 +785,21 @@ void CRT_Base_IF<T,dim,no_int_states>::run_sequence()
 
         std::cout << "t = " << to_string(m_header.t) << std::endl;
 
-        if ( seq.output_freq == freq::each )
+        if ( (seq.output_freq == freq::each) and (s == 0) )
         {
           for ( int k=0; k<no_int_states; k++ )
           {
             sprintf( filename, "%.3f_%d.bin", this->Get_t(), k+1 );
             this->Save_Phi( filename, k );
+          }
+        }
+
+        if ( (seq.output_freq == freq::packed) and (s == 0) )
+        {
+          for ( int k=0; k<no_int_states; k++ )
+          {
+            sprintf( filename, "Seq_%d_%d.bin", seq_counter, k+1 );
+            this->Append_Phi( filename, k );
           }
         }
 
@@ -800,7 +820,7 @@ void CRT_Base_IF<T,dim,no_int_states>::run_sequence()
         }
       }
 
-      if ( seq.output_freq == freq::last )
+      if ( (seq.output_freq == freq::last) and (s == 0) )
       {
         for ( int k=0; k<no_int_states; k++ )
         {
@@ -808,6 +828,17 @@ void CRT_Base_IF<T,dim,no_int_states>::run_sequence()
           this->Save_Phi( filename, k );
         }
       }
+
+      if ( (seq.no_of_chirps > 1) and (s == 0) )
+      {
+        backup_end_t = this->Get_t();
+        for ( int k=0; k<no_int_states; k++ )
+        {
+          sprintf( filename, "%.3f_%d.bin", this->Get_t(), k+1 );
+          this->Save_Phi( filename, k );
+        }
+      }
+
 
       if ( seq.compute_pn_freq == freq::last )
       {
@@ -890,6 +921,20 @@ void CRT_Base_IF<T,dim,no_int_states>::run_sequence()
     {
       sprintf(filename, "Chirp_%d.txt", seq_counter );
       Output_chirps_list(filename);
+    }
+
+    // Loading files after initial chirp sequence
+    if ( seq.no_of_chirps > 1 )
+    {
+      for ( int k=0; k<no_int_states; k++ )
+      {
+        sprintf( filename, "%.3f_%d.bin", backup_end_t, k+1 );
+        ifstream file1( filename, ifstream::binary );
+        file1.seekg( sizeof(generic_header), ifstream::beg );
+        file1.read( (char *)m_fields[k]->Getp2In(), sizeof(fftw_complex)*m_no_of_pts );
+      }
+      assert(this->m_header.t = backup_end_t);
+      this->m_header.t = backup_end_t;
     }
 
     seq_counter++;

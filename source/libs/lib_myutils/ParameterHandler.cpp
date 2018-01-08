@@ -23,6 +23,7 @@ ParameterHandler::ParameterHandler( const std::string filename )
   m_map_freq.insert(std::pair<std::string,int>("none",freq::none));
   m_map_freq.insert(std::pair<std::string,int>("each",freq::each));
   m_map_freq.insert(std::pair<std::string,int>("last",freq::last));
+  m_map_freq.insert(std::pair<std::string,int>("packed",freq::packed));
 
   //Read values from xml
   populate_constants();

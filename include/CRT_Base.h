@@ -61,6 +61,7 @@ public:
   void Save( double *, std::string );
   void Save( fftw_complex *, std::string );
   void Save_Phi( std::string, const int comp=0 );
+  void Append_Phi( std::string, const int comp=0 );
   void Dump_2( ofstream & );
 
   void Set_custom_fct( StepFunction &fct)
@@ -616,6 +617,29 @@ void CRT_Base<T,dim,no_int_states>::Save_Phi( std::string filename, const int co
   file1.close();
 }
 
+/** Append an internal state to a binary file
+  *
+  * @param filename
+  * @param comp Write internal state comp
+  */
+template <class T, int dim, int no_int_states>
+void CRT_Base<T,dim,no_int_states>::Append_Phi( std::string filename, const int comp )
+{
+  if ( comp<0 || comp>no_int_states ) throw std::string("Error in " + std::string(__func__) + ": comp out of bounds\n");
+
+  char *header = reinterpret_cast<char *>(&m_header);
+  char *Psi = reinterpret_cast<char *>(m_fields[comp]->Getp2In());
+
+  ofstream file1( filename, ofstream::binary | ofstream::app );
+  if (file1.fail()) {
+    cout << "File " << filename << " could not be opened. Failbit: " << file1.rdstate() << endl;
+    exit(EXIT_FAILURE);
+  }
+  file1.write( header, sizeof(generic_header) );
+  file1.write( Psi, m_no_of_pts*sizeof(fftw_complex) );
+  file1.close();
+}
+
 /** Write an array of doubles to a binary file
   *
   * @param data Write content of data to file. Number of elements of data must be the same as m_no_of_pts
@@ -743,6 +767,12 @@ void CRT_Base<T,dim,no_int_states>::run_sequence()
       exit(EXIT_FAILURE);
     }
 
+    for ( int k=0; k<no_int_states; k++ ) // Delete old packed Sequence
+    {
+      sprintf( filename, "Seq_%d_%d.bin", seq_counter, k+1 );
+      std::remove(filename);
+    }
+
     for ( int i=1; i<=Na; i++ )
     {
       (*half_step_fct)(this,seq);    // exp(T/2)
@@ -762,6 +792,15 @@ void CRT_Base<T,dim,no_int_states>::run_sequence()
         {
           sprintf( filename, "%.3f_%d.bin", this->Get_t(), k+1 );
           this->Save_Phi( filename, k );
+        }
+      }
+
+      if ( seq.output_freq == freq::packed )
+      {
+        for ( int k=0; k<no_int_states; k++ )
+        {
+          sprintf( filename, "Seq_%d_%d.bin", seq_counter, k+1 );
+          this->Append_Phi( filename, k );
         }
       }
 

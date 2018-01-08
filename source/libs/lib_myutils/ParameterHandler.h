@@ -11,7 +11,7 @@
 
 /** \file Parameterhandler.h */
 
-enum freq { none=0, each=1, last=2 };
+enum freq { none=0, each=1, last=2, packed=3 };
 
 /** Contains elements for controlling a sequence */
 struct sequence_item
