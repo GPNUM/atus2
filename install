@@ -410,10 +410,8 @@ prepend-path LD_RUN_PATH     $path/lib64
 --module-dir DIR      Module directory
                           System Default: ~a
                           User Default:   ~a
---no-update-shell     Skip shell config update
 -n PACKAGES           Non-interactive Mode
-                          Install PACKAGES
-                          Updates shell config [default=yes]~%~%"
+                          Install PACKAGES~%~%"
           *default-system-build-dir* *default-user-build-dir*
           *default-system-install-dir* *default-user-install-dir*
           *default-system-module-dir*  *default-user-module-dir*))
@@ -454,7 +452,7 @@ prepend-path LD_RUN_PATH     $path/lib64
                                ".bashrc")))
     (when (or *non-interactive-p*
               (yes-or-no-p "Should I append the following text to your ~a?~%~a~%"
-                       shell-config-file module-path))
+                           shell-config-file module-path))
       (with-open-file (out (merge-pathnames shell-config-file
                                             (user-homedir-pathname))
                            :direction :output
@@ -502,7 +500,7 @@ q - Abort Installation.
 
     (format t "~%Installation finished.~%")
 
-    (unless (or (arg-exist-p "--no-modules") (arg-exist-p "--no-update-shell"))
+    (unless (or (arg-exist-p "--no-modules") *non-interactive-p*)
       (update-shell-config))))
 
 (with-open-file (log "install.log" :direction :output :if-does-not-exist :create :if-exists :supersede)
