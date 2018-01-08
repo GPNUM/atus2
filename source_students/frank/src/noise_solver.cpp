@@ -825,7 +825,7 @@ namespace RT_Solver
       }
       set_cn_matrix_with_metric_noise(m_cn_rA, -1);
       if (not no_noise_run) {
-        set_noise(seq, m_header.t+m_header.dt);
+        set_noise(seq, m_header.t+0.5*m_header.dt);
       }
       set_cn_matrix_with_metric_noise(m_cn_lA, +1);
     }

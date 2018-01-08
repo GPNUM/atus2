@@ -5,39 +5,39 @@
 (setf *read-default-float-format* 'double-float)
 
 (defun time-slice (start end i n)
-	   (assert (>= end start 0))
-	   (assert (>= n i 0))
-	   (loop for j below i with x = start
-		do (setf x (sqrt (+ (/ (- (expt end 2) (expt start 2)) n) (expt x 2))))
-              finally (return x)))
+  (assert (>= end start 0))
+  (assert (>= n i 0))
+  (loop for j below i with x = start
+     do (setf x (sqrt (+ (/ (- (expt end 2) (expt start 2)) n) (expt x 2))))
+     finally (return x)))
 
 (defun generate-run.sh (noise mstart mend step g1 &optional (files 3))
   (loop :for file :from 1 :to files
      :for start = (* (round (time-slice mstart mend (1- file) files) step) step)
      :for end = (* (round (time-slice mstart mend file files) step) step)
      :do (format t "~a ~a ~a ~a~%" start end file files)
-     (with-open-file (out (format nil "~a-~a-~a-g1-~a.sh" file 3 noise g1) :direction :output :if-exists :supersede :if-does-not-exist :create)
-       (format out "#!/bin/sh~%~%")
-       (format out "~&../run-noise-solver.lisp solve $1 $2 ~{if-~a-chirp-~a-g1-~a.xml ~}~%~%"
-               (loop
-                  for i
-                  from (round (time-slice start end 0 3) step)
-                  below (round (time-slice start end 1 3) step)
-                  append (list noise (+ 0 (* i step)) g1)))
-       (format out "~&../run-noise-solver.lisp solve $1 $2 ~{if-~a-chirp-~a-g1-~a.xml ~}~%~%"
-               (loop
-                  for i
-                  from (round (time-slice start end 1 3) step)
-                  below (round (time-slice start end 2 3) step)
-                  append (list noise (+ 0 (* i step)) g1)))
-       (format out "~&../run-noise-solver.lisp solve $1 $2 ~{if-~a-chirp-~a-g1-~a.xml ~}~%~%"
-               (loop
-                  for i
-                  from (round (time-slice start end 2 3) step)
-                  below (if (= file files)
-                            (1+ (round (time-slice start end 3 3) step))
-                            (round (time-slice start end 3 3) step))
-                  append (list noise (+ 0 (* i step)) g1))))))
+       (with-open-file (out (format nil "~a-~a-~a-g1-~a.sh" file 3 noise g1) :direction :output :if-exists :supersede :if-does-not-exist :create)
+         (format out "#!/bin/sh~%~%")
+         (format out "~&../run-noise-solver.lisp solve $1 $2 ~{if-~a-chirp-~a-g1-~a.xml ~}~%~%"
+                 (loop
+                    for i
+                    from (round (time-slice start end 0 3) step)
+                    below (round (time-slice start end 1 3) step)
+                    append (list noise (+ 0 (* i step)) g1)))
+         (format out "~&../run-noise-solver.lisp solve $1 $2 ~{if-~a-chirp-~a-g1-~a.xml ~}~%~%"
+                 (loop
+                    for i
+                    from (round (time-slice start end 1 3) step)
+                    below (round (time-slice start end 2 3) step)
+                    append (list noise (+ 0 (* i step)) g1)))
+         (format out "~&../run-noise-solver.lisp solve $1 $2 ~{if-~a-chirp-~a-g1-~a.xml ~}~%~%"
+                 (loop
+                    for i
+                    from (round (time-slice start end 2 3) step)
+                    below (if (= file files)
+                              (1+ (round (time-slice start end 3 3) step))
+                              (round (time-slice start end 3 3) step))
+                    append (list noise (+ 0 (* i step)) g1))))))
 
 (defun parse-data-line (str)
   (remove nil (mapcar (lambda (x) (read-from-string x nil nil))
@@ -55,8 +55,8 @@
 
 (defun write-list (filename list)
   (with-open-file (out filename :direction :output :if-exists :supersede :if-does-not-exist :create)
-      (loop :for elem :in list
-         :do (format out "~a~%" elem))))
+    (loop :for elem :in list
+       :do (format out "~a~%" elem))))
 
 (defun select-column (data column)
   (mapcar (lambda (x) (elt x column))
@@ -109,15 +109,15 @@ print \\\"Noise done\\\";")
 (defun generate-noise (parameter-file)
   (time (run (format nil "noise_gen ../~a ../inf_zero.bin" parameter-file)))
   (run "reduce_data Noise.bin")
-;  (run *noise.gpl*)
+                                        ;  (run *noise.gpl*)
   )
 
 (defun link-to (path start end)
   (loop :for i :from start :to end
      :do (ensure-directories-exist (format nil "~a/" i))
-     (if (uiop:absolute-pathname-p path)
-         (run (format nil "ln -fs ~a/~a/Noise.bin ~:*~a/Noise.bin" path i))
-         (run (format nil "ln -fs ../~a/~a/Noise.bin ~:*~a/Noise.bin" path i)))))
+       (if (uiop:absolute-pathname-p path)
+           (run (format nil "ln -fs ~a/~a/Noise.bin ~:*~a/Noise.bin" path i))
+           (run (format nil "ln -fs ../~a/~a/Noise.bin ~:*~a/Noise.bin" path i)))))
 
 (defvar *rabi.gpl* "gnuplot -e \"set terminal png;
 set output \\\"Rabi.png\\\";
@@ -128,29 +128,29 @@ print \\\"Rabi done\\\"\"")
   (loop :for param-file :in (ensure-list parameter-files)
      :do (loop :for dir :from start :to end
             :do
-            (uiop:with-current-directory ((ensure-directories-exist
-                                           (format nil "~a/~@[~a/~]"
-                                                   dir
-                                                   (pathname-name param-file))))
-              (format t "Run in directory: ~a~%" (uiop:getcwd))
-              (unless (every #'probe-file (list "../Noise.bin"))
-                (error "Noise missing in ~a~%" dir))
-              (format t "Solve~%")
-              (time (run (format nil "noise_solver ../../~a" param-file)))))))
+              (uiop:with-current-directory ((ensure-directories-exist
+                                             (format nil "~a/~@[~a/~]"
+                                                     dir
+                                                     (pathname-name param-file))))
+                (format t "Run in directory: ~a~%" (uiop:getcwd))
+                (unless (every #'probe-file (list "../Noise.bin"))
+                  (format t "Warning: Noise missing in ~a~%" dir))
+                (format t "Solve~%")
+                (time (run (format nil "noise_solver ../../~a" param-file)))))))
 
 (defun chirp-solver (start end parameter-files)
   (loop :for param-file :in (ensure-list parameter-files)
      :do (loop :for dir :from start :to end
             :do
-            (uiop:with-current-directory ((ensure-directories-exist
-                                           (format nil "~a/~@[~a/~]"
-                                                   dir
-                                                   (pathname-name param-file))))
-              (format t "Run in directory: ~a~%" (uiop:getcwd))
-              (unless (every #'probe-file (list "../Noise.bin"))
-                (error "Noise missing in ~a~%" dir))
-              (format t "Solve~%")
-              (time (run "noise_solver more-chirps.xml"))))))
+              (uiop:with-current-directory ((ensure-directories-exist
+                                             (format nil "~a/~@[~a/~]"
+                                                     dir
+                                                     (pathname-name param-file))))
+                (format t "Run in directory: ~a~%" (uiop:getcwd))
+                (unless (every #'probe-file (list "../Noise.bin"))
+                  (error "Noise missing in ~a~%" dir))
+                (format t "Solve~%")
+                (time (run "noise_solver more-chirps.xml"))))))
 
 (defun average-data (start end filename subdirs)
   (loop :for subdir :in (ensure-list subdirs)
@@ -166,17 +166,17 @@ print \\\"Rabi done\\\"\"")
                            (error "Some files do not exist.~&~a" (loop :for file :in filenames
 
                                                                     :for s :in files
-                                                                      :collect (cons file s))))
+                                                                    :collect (cons file s))))
                          (with-open-file (out (ensure-directories-exist (format nil "avg-~a/~a" subdir filename))
                                               :direction :output :if-exists :supersede)
                            (loop :for lines = (loop :for file :in files
                                                  :collect (read-line file nil nil))
                               :while (notany #'null lines)
                               :do
-                              (if (comment-line-p (first lines))
-                                  (format out "~a~%" (first lines))
-                                  (format out "~{~a~t~}~%"
-                                          (avg-data (mapcar #'parse-data-line lines)))))
+                                (if (comment-line-p (first lines))
+                                    (format out "~a~%" (first lines))
+                                    (format out "~{~a~t~}~%"
+                                            (avg-data (mapcar #'parse-data-line lines)))))
                            (format t "Average written into avg-~a/~a~%" subdir filename)))
                (mapcar (lambda (x) (when (and (streamp x) (open-stream-p x)) (close x)))
                        files))))))
@@ -204,8 +204,8 @@ print \\\"Rabi done\\\"\"")
                              (loop :for i :below (if (= (nDatatyp header) 0)
                                                      (* (nDimX header) (nDimY header) (nDimZ header))
                                                      (* (nDimX header) (nDimY header) (nDimZ header) 2))
-                                 :do (write-float64 out (funcall average-function (loop :for file :in files
-                                                           :collect (read-float64 file))))))
+                                :do (write-float64 out (funcall average-function (loop :for file :in files
+                                                                                    :collect (read-float64 file))))))
                            (format t "Average written into avg-~a/~a~%" subdir filename)))
                (mapcar (lambda (x) (when (and (streamp x) (open-stream-p x)) (close x)))
                        files))))))
@@ -220,86 +220,81 @@ print \\\"Rabi done\\\"\"")
   (labels ((call-rec (files streams fun)
              (with-open-file (stream (first files)
                                      :direction direction :element-type element-type
-                                     :if-exists if-exists :if-does-not-exists if-does-not-exist)
+                                     :if-exists if-exists :if-does-not-exist if-does-not-exist)
                (if (null (rest files))
                    (apply fun (cons (cons stream streams) more-args))
                    (call-rec (rest files) (cons stream streams) fun)))))
     (call-rec files nil fun)))
 
-(defun average-binary-data2 (files output-file &key avg-fun)
-  (flet ((avg-to-file-bin (streams output-file &key (avg-fun #'mean))
-             (with-open-file (out (ensure-directories-exist output-file)
-                                  :direction :output
-                                  :if-exists :supersede
-                                  :element-type '(unsigned-byte 8))
-               (let ((header (read-header (first streams))))
-                 (loop :for stream :in streams
-                    :do (file-position stream (nself header)))
-                 (write-header out header)
-                 (loop :for i
-                    :below (if (= (nDatatyp header) 0)
-                               (* (nDimX header) (nDimY header) (nDimZ header))
-                               (* (nDimX header) (nDimY header) (nDimZ header) 2))
-                    :do (write-float64 out
-                                       (apply avg-fun
-                                              (loop :for file :in files
-                                                 :collect (read-float64 file)))))
-                 (format t "Average written into ~a~%" output-file)))))
-    (call-with-open-files files avg-to-file-bin :element-type '(unsigned-byte 8))))
+;; (defun average-binary-data2 (files output-file &key avg-fun)
+;;   (flet ((avg-to-file-bin (streams output-file &key (avg-fun #'mean))
+;;              (with-open-file (out (ensure-directories-exist output-file)
+;;                                   :direction :output
+;;                                   :if-exists :supersede
+;;                                   :element-type '(unsigned-byte 8))
+;;                (let ((header (read-header (first streams))))
+;;                  (loop :for stream :in streams
+;;                     :do (file-position stream (nself header)))
+;;                  (write-header out header)
+;;                  (loop :for i
+;;                     :below (if (= (nDatatyp header) 0)
+;;                                (* (nDimX header) (nDimY header) (nDimZ header))
+;;                                (* (nDimX header) (nDimY header) (nDimZ header) 2))
+;;                     :do (write-float64 out
+;;                                        (apply avg-fun
+;;                                               (loop :for file :in files
+;;                                                  :collect (read-float64 file)))))
+;;                  (format t "Average written into ~a~%" output-file)))))
+;;     (call-with-open-files files avg-to-file-bin :element-type '(unsigned-byte 8))))
 
-(defun average-binary-text2 (files output-file &key avg-fun)
-  (flet ((avg-to-file-txt (streams output-file)
-           (with-open-file (out (ensure-directories-exist output-file)
-                                :direction :output
-                                :if-exists :supersede)
-             (loop :for lines = (loop :for file :in files
-                                   :collect (read-line file nil nil))
-                :while (notany #'null lines)
-                :do
-                  (if (comment-line-p (first lines))
-                      (format out "~a~%" (first lines))
-                      (format out "~{~a~t~}~%"
-                              (avg-data (mapcar #'parse-data-line lines)))))
-             (format t "Average written into ~a~%" output-file))))
-    (call-with-open-files files avg-to-file-txt)))
+;; (defun average-binary-text2 (files output-file &key avg-fun)
+;;   (flet ((avg-to-file-txt (streams output-file)
+;;            (with-open-file (out (ensure-directories-exist output-file)
+;;                                 :direction :output
+;;                                 :if-exists :supersede)
+;;              (loop :for lines = (loop :for file :in files
+;;                                    :collect (read-line file nil nil))
+;;                 :while (notany #'null lines)
+;;                 :do
+;;                   (if (comment-line-p (first lines))
+;;                       (format out "~a~%" (first lines))
+;;                       (format out "~{~a~t~}~%"
+;;                               (avg-data (mapcar #'parse-data-line lines)))))
+;;              (format t "Average written into ~a~%" output-file))))
+;;     (call-with-open-files files avg-to-file-txt)))
 
 (defmacro on-ensemble ((start end &optional (subdirs (list (list)))) &body body)
   (with-gensyms (subdir dir)
     `(loop :for ,subdir :in (ensure-list ,subdirs)
-     :do (loop :for ,dir :from ,start :to ,end
-            :do (uiop:with-current-directory ((ensure-directories-exist
-                                               (format nil "~a/~@[~a/~]"
-                                                       ,dir
-                                                       (when ,subdir
-                                                         (pathname-name ,subdir)))))
-                  ,@body)))))
+        :do (loop :for ,dir :from ,start :to ,end
+               :do (uiop:with-current-directory ((ensure-directories-exist
+                                                  (format nil "~a/~@[~a/~]"
+                                                          ,dir
+                                                          (when ,subdir
+                                                            (pathname-name ,subdir)))))
+                     ,@body)))))
 
 (defun cmd (start end command subdirs)
   (assert (numberp start))
   (assert (numberp end))
   (on-ensemble (start end subdirs)
-    (format t "~&  cmd:~a $ ~a~%" (uiop:getcwd) command)
-    (run command)))
+               (format t "~&  cmd:~a $ ~a~%" (uiop:getcwd) command)
+               (run command)))
 
 (defun generate-helper (args)
   (if args
       (let ((start (parse-integer (first args)))
             (end (parse-integer (second args)))
-            (parameter-files (subseq args 2)))
-        (loop :for subdir :in (ensure-list (nil))
-              :do (loop :for dir :from start :to
-                        end
-                     :do (uiop:with-current-directory
-                             ((ensure-directories-exist
-                               (format nil
-                                       "~a/~@[~a/~]"
-                                       dir
-                                       (when
-                                           subdir
-                                         (pathname-name
-                                          subdir)))))
-                              (format t "run in directory: ~a/~%" (uiop:getcwd))
-                              (generate-noise (format nil "~a" parameter-file))))))
+            (parameter-file (third args)))
+        (loop :for dir :from start :to end
+           :do (uiop:with-current-directory
+                   ((ensure-directories-exist
+                     (format nil
+                             "~a/~@[~a/~]"
+                             dir
+                             nil)))
+                 (format t "run in directory: ~a/~%" (uiop:getcwd))
+                 (generate-noise (format nil "~a" parameter-file)))))
       (print "noise-solver generate <start> <end> <parameter-files*>")))
 
 (defun filetype= (filename type)
@@ -340,9 +335,9 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
          (line (read-line in nil nil)))
     (when line
       (multiple-value-bind (num end) (parse-float:parse-float line :junk-allowed t)
-      (when (/= (+ pos end 1) (file-position in))
-        (file-position in (+ pos end)))
-      num))))
+        (when (/= (+ pos end 1) (file-position in))
+          (file-position in (+ pos end)))
+        num))))
 
 (defun rms (sample)
   "Calculates root means squared of sample"
@@ -371,11 +366,11 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
                   :when (= x1 x2)
                   :unless (> 65000 x1 45000)
                   :do
-                  (format out "~a ~a~%"
-                          x1
-                          (rms y1))
-                  (return-from nil))
-           (file-position in1 0))))))
+                    (format out "~a ~a~%"
+                            x1
+                            (rms y1))
+                    (return-from nil))
+             (file-position in1 0))))))
 
 (defun diff-visibility2 (file1 file2)
   (with-open-file (out (format nil "diff2-~a.txt" (pathname-name file2))
@@ -395,35 +390,35 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
                   :when (= x1 x2)
                   :unless (> 65000 x1 45000)
                   :do
-                  (let ((diff (mapcar (lambda (y) (abs (- y y1)))
-                                      y2)))
-                    (format out "~a ~a ~a ~a ~a~%"
-                            x1
-                            (rms diff)
-                            (mean diff)
-                            (variance diff)
-                            (standard-deviation diff))
-                    (return-from nil)))
-           (file-position in1 0))))))
+                    (let ((diff (mapcar (lambda (y) (abs (- y y1)))
+                                        y2)))
+                      (format out "~a ~a ~a ~a ~a~%"
+                              x1
+                              (rms diff)
+                              (mean diff)
+                              (variance diff)
+                              (standard-deviation diff))
+                      (return-from nil)))
+             (file-position in1 0))))))
 
 (defun visibility (path)
   (uiop:with-current-directory (path)
-          (run (format nil "interpol_chirp Chirp_5.txt"))
-          (with-open-file (in "Chirp_interpol.txt")
-            (let* ((data (loop :for num = (read-number in)
-                            :while num
-                            :collect (read-number in)))
-                   (imax (apply #'max data))
-                   (imin (apply #'min data)))
-              (/ (- imax imin) (+ imax imin))))))
+    (run (format nil "interpol_chirp Chirp_5.txt"))
+    (with-open-file (in "Chirp_interpol.txt")
+      (let* ((data (loop :for num = (read-number in)
+                      :while num
+                      :collect (read-number in)))
+             (imax (apply #'max data))
+             (imin (apply #'min data)))
+        (/ (- imax imin) (+ imax imin))))))
 
 (defun get-bragg-visibility (strength duration g1)
   (with-open-file (out (format nil "visibility-fourier-g1-~a.txt" g1) :direction :output
                        :if-exists :supersede :if-does-not-exist :create)
-                (loop :for time :in (ensure-list duration)
-                 :for file = (format nil "fourier/if-~f-chirp-~d~@[-g1-~f~]/Chirp_5.txt"
-                                       strength time g1)
-                 :do (format out "~d ~f~%" time (visibility file)))))
+    (loop :for time :in (ensure-list duration)
+       :for file = (format nil "fourier/if-~f-chirp-~d~@[-g1-~f~]/Chirp_5.txt"
+                           strength time g1)
+       :do (format out "~d ~f~%" time (visibility file)))))
 
 (defun get-visibility (strength &optional (duration (list 1000 2000 3000 5000 10000 14000 21000)) (g1 nil))
   (with-open-file (out (format nil "visibility-~a~@[-~a~].txt" strength g1)
@@ -449,7 +444,7 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
                        :if-does-not-exist :create)
     (loop :for time :in (ensure-list duration)
        :do (format out "~a ~a~%" time (mean (loop :for num :from start :to end
-                                             :collect (visibility (format nil "~a/if-~@[~f-~]chirp-~d~@[-g1-~f~]/Chirp_5.txt" num strength time g1))))))))
+                                               :collect (visibility (format nil "~a/if-~@[~f-~]chirp-~d~@[-g1-~f~]/Chirp_5.txt" num strength time g1))))))))
 
 
 (defun average-files (start end filename strength
@@ -576,7 +571,7 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
     <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"each\" pn_freq=\"last\" rabi_output_freq=\"each\"~@[ chirp_mode=\"1\" no_of_chirps=\"10\"~]>100</bragg_ad>
   </SEQUENCE>
 </SIMULATION>"
-                           str dir g (+ 100 (/ time 2)) str g (/ time 2) chirp))))))
+                                 str dir g (+ 100 (/ time 2)) str g (/ time 2) chirp))))))
 
 (defun generate-more-chirp-xml (start end strength duration &optional (chirp 30) (g1 0.0))
   (loop :for str :in (ensure-list strength)
@@ -584,11 +579,11 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
             :do (loop :for g :in (ensure-list g1)
                    :do (loop :for run :from start :to end
                           :do (with-open-file (out (format nil "~a/if-~@[~f-~]~@[chirp-~]~*~d~@[-g1-~f~]/more-chirps.xml"
-                                                    run str chirp time g)
-                                            :direction :output
-                                            :if-exists :supersede
-                                            :if-does-not-exist :create)
-                         (format out "<SIMULATION>
+                                                           run str chirp time g)
+                                                   :direction :output
+                                                   :if-exists :supersede
+                                                   :if-does-not-exist :create)
+                                (format out "<SIMULATION>
   <DIM>1</DIM>
   <FILENAME>~a.000_1.bin</FILENAME>
   <FILENAME_2>../../inf_zero.bin</FILENAME_2>
@@ -632,7 +627,7 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
     <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"each\" pn_freq=\"last\" rabi_output_freq=\"each\" chirp_mode=\"1\" no_of_chirps=\"~a\">100</bragg_ad>
   </SEQUENCE>
 </SIMULATION>"
-                                 (+ time 300) str g chirp)))))))
+                                        (+ time 300) str g chirp)))))))
 
 (defun bragg-solve (param-files)
   (loop :for file :in (ensure-list param-files)
@@ -704,13 +699,13 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
     (format t "~&No commands given.~%")
     (uiop:quit))
   (switch ((first argv) :test #'string=)
-    ("solve" (solve-helper (rest argv)))
-    ("bragg-solve" (bragg-solve-helper (rest argv)))
-    ("chirp-solve" (chirp-helper (rest argv)))
-    ("generate" (generate-helper (rest argv)))
-    ("average" (average-helper (rest argv)))
-    ("cmd" (cmd-helper (rest argv)))
-    ("fetch" (fetch-helper (rest argv)))
-    ("repl" (format t "~%* ") (print (eval (read))))
-    (t (format t "Command not known: ~a~%" (first argv))
-       (uiop:quit))))
+          ("solve" (solve-helper (rest argv)))
+          ("bragg-solve" (bragg-solve-helper (rest argv)))
+          ("chirp-solve" (chirp-helper (rest argv)))
+          ("generate" (generate-helper (rest argv)))
+          ("average" (average-helper (rest argv)))
+          ("cmd" (cmd-helper (rest argv)))
+          ("fetch" (fetch-helper (rest argv)))
+          ("repl" (format t "~%* ") (print (eval (read))))
+          (t (format t "Command not known: ~a~%" (first argv))
+             (uiop:quit))))
