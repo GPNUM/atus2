@@ -56,3 +56,6 @@ TARGET_LINK_LIBRARIES( integrate_noise myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2}
 
 ADD_EXECUTABLE( reverse_data reverse_data.cpp )
 TARGET_LINK_LIBRARIES( reverse_data myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} m ${MUPARSER_LIBRARY} ${LIS_LIBRARY} )
+
+ADD_EXECUTABLE( unpack_seq unpack_seq.cpp )
+TARGET_LINK_LIBRARIES( unpack_seq myutils ${GSL_LIBRARY_1} ${GSL_LIBRARY_2} m ${MUPARSER_LIBRARY} ${LIS_LIBRARY} )
