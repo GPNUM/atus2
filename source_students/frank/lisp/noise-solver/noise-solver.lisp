@@ -11,6 +11,44 @@
      do (setf x (sqrt (+ (/ (- (expt end 2) (expt start 2)) n) (expt x 2))))
      finally (return x)))
 
+(defun gen-gen.sh (start N)
+		(with-open-file (out (format nil "gen~d.sh" N) :direction :output :if-exists :supersede :if-does-not-exist :create)
+		  (format out "#!/bin/sh~%~%")
+		  (format out "~&../run-noise-solver.lisp generate ~d ~d generate_noise.xml & ~%"  (+ start (* 10 0)) (+ 9 start (* 10 0)))
+		  (format out "~&../run-noise-solver.lisp generate ~d ~d generate_noise.xml & ~%"  (+ start (* 10 1)) (+ 9 start (* 10 1)))
+		  (format out "~&../run-noise-solver.lisp generate ~d ~d generate_noise.xml & ~%"  (+ start (* 10 2)) (+ 9 start (* 10 2)))
+		  (format out "~&../run-noise-solver.lisp generate ~d ~d generate_noise.xml & ~%"  (+ start (* 10 3)) (+ 9 start (* 10 3)))
+		  (format out "~&../run-noise-solver.lisp generate ~d ~d generate_noise.xml & ~%"  (+ start (* 10 4)) (+ 9 start (* 10 4)))
+		  (format out "~&../run-noise-solver.lisp generate ~d ~d generate_noise.xml & ~%"  (+ start (* 10 5)) (+ 9 start (* 10 5)))
+		  (format out "~&~%wait~%")))
+
+(defun gen-all-gen.sh (start)
+  (gen-gen.sh (+ start (* 60 0)) 1)
+  (gen-gen.sh (+ start (* 60 1)) 2)
+  (gen-gen.sh (+ start (* 60 2)) 3)
+  (gen-gen.sh (+ start (* 60 3)) 4)
+  (gen-gen.sh (+ start (* 60 4)) 5))
+
+(defun gen-freeprop (filename start end)
+  (with-open-file (out filename :direction :output :if-exists :supersede :if-does-not-exist :create)
+    (format out "#!/bin/bash
+#PBS -j oe
+#PBS -l walltime=11:59:00
+#PBS -l nodes=~d:ppn=24
+#PBS -l feature=mpp
+#PBS -e my_job.$PBS_JOBID.err
+#PBS -o my_job.$PBS_JOBID.out
+#PBS -A hbp00035
+
+source $HOME/frank.bashrc
+export MY_NO_OF_THREADS=8
+export OMP_NUM_THREADS=8
+
+cd wide~%~%" (/ (- end start -1) 3))
+    (loop :for i :from start :to end :by 3
+       :do (format out "~&aprun -n 1 -d 24 ../freeprop-helper.sh ~d ~d ~d &" i (+ i 1) (+ i 2)))
+    (format out "~%~%wait~&")))
+
 (defun generate-run.sh (noise mstart mend step g1 &optional (files 3))
   (loop :for file :from 1 :to files
      :for start = (* (round (time-slice mstart mend (1- file) files) step) step)
@@ -71,7 +109,23 @@
      :collect (loop :for list :in lists
                  :collect (elt list i))))
 
+(defun diff-data-line (data orig)
+  (mapcar #'- data orig))
+
+(defun diff-data-helper (list)
+  (cons (caar list) (mapcar (lambda (x) (/ x (length list)))
+                            (rest (reduce #'(lambda (x y) (mapcar #'- x y))
+                                          list)))))
+
 (defun avg-data (list)
+  (cons (caar list) (mapcar (lambda (x) (/ x (length list)))
+                            (rest (reduce #'(lambda (x y) (mapcar #'+ x y))
+                                          list)))))
+(defun avg-squared-data (list)
+  (cons (caar list) (mapcar (lambda (x) (/ x (length list)))
+                            (rest (reduce #'(lambda (x y) (mapcar (lambda (a b) (+ (expt a 2) (expt b 2))) x y))
+                                          list)))))
+(defun ms-data (list orig)
   (cons (caar list) (mapcar (lambda (x) (/ x (length list)))
                             (rest (reduce #'(lambda (x y) (mapcar #'+ x y))
                                           list)))))
@@ -152,6 +206,21 @@ print \\\"Rabi done\\\"\"")
                 (format t "Solve~%")
                 (time (run "noise_solver more-chirps.xml"))))))
 
+(defun diff-data (file1 file2)
+  (let ((output-file (merge-pathnames (format nil "diff-~a.~a" (pathname-name file1) (pathname-type file1)) file1)))
+    (with-open-file (in1 file1)
+      (with-open-file (in2 file2)
+        (with-open-file (out output-file
+                             :direction :output :if-exists :supersede)
+          (loop :for lines = (list (read-line in1 nil nil) (read-line in2 nil nil))
+             :while (notany #'null lines)
+             :do
+               (if (comment-line-p (first lines))
+                   (format out "~a~%" (first lines))
+                   (format out "~{~a~t~}~%"
+                           (diff-data-helper (mapcar #'parse-data-line lines))))))))
+    output-file))
+
 (defun average-data (start end filename subdirs)
   (loop :for subdir :in (ensure-list subdirs)
      :do (let ((filenames (loop :for num :from start :to end
@@ -181,7 +250,68 @@ print \\\"Rabi done\\\"\"")
                (mapcar (lambda (x) (when (and (streamp x) (open-stream-p x)) (close x)))
                        files))))))
 
-(defun average-binary-data (start end filename subdirs &key (average-function #'mean))
+(defun analyze-data (start end filename subdirs)
+  (loop :for subdir :in (ensure-list subdirs)
+     :do (let ((filenames (loop :for num :from start :to end
+                             :for path = (format nil "~a~a/~@[~a/~]~a" (uiop:getcwd) num subdir filename)
+                             :collect path)))
+           (let ((files (loop :for file :in filenames
+                           :collect (open file :if-does-not-exist nil))))
+             (unwind-protect
+                  (progn (unless (every (lambda (fstream)
+                                          (and (streamp fstream) (open-stream-p fstream)))
+                                        files)
+                           (error "Some files do not exist.~&~a" (loop :for file :in filenames
+
+                                                                    :for s :in files
+                                                                    :collect (cons file s))))
+                         (with-open-file (orig (format nil "fourier/~a/~a/" subdir filename))
+                           (with-open-file (mean-out (ensure-directories-exist (format nil "ana-~a/mean-~a" subdir filename))
+                                                     :direction :output :if-exists :supersede)
+                             (with-open-file (var-out (ensure-directories-exist (format nil "ana-~a/var-~a" subdir filename))
+                                                      :direction :output :if-exists :supersede)
+                               (with-open-file (sigma-out (ensure-directories-exist (format nil "ana-~a/sigma-~a" subdir filename))
+                                                          :direction :output :if-exists :supersede)
+                                 (with-open-file (err-out (ensure-directories-exist (format nil "ana-~a/err-~a" subdir filename))
+                                                          :direction :output :if-exists :supersede)
+                                   (with-open-file (ms-out (ensure-directories-exist (format nil "ana-~a/ms-~a" subdir filename))
+                                                           :direction :output :if-exists :supersede)
+                                     (with-open-file (rms-out (ensure-directories-exist (format nil "ana-~a/rms-~a" subdir filename))
+                                                              :direction :output :if-exists :supersede)
+                                       (loop :for lines = (loop :for file :in files
+                                                             :collect (read-line file nil nil))
+                                          :for orig-line = (read-line orig nil nil)
+                                          :while (and (notany #'null lines) (not (null orig-line)))
+                                          :do
+                                            (if (comment-line-p (first lines))
+                                                (progn (format mean-out "~a~%" (first lines))
+                                                       (format var-out "~a~%" (first lines))
+                                                       (format sigma-out "~a~%" (first lines))
+                                                       (format err-out "~a~%" (first lines))
+                                                       (format ms-out "~a~%" (first lines))
+                                                       (format rms-out "~a~%" (first lines)))
+                                                (let* ((data-line (mapcar #'parse-data-line lines))
+                                                       (orig-data (parse-data-line orig-line))
+                                                       (avg-out (avg-data data-line))
+                                                       (col0 (car avg-out))
+                                                       (mean (cdr avg-out))
+                                                       (mean-squared (cdr (avg-squared-data data-line)))
+                                                       (variance (mapcar #'- mean-squared (mapcar (lambda (x) (expt x 2)) mean)))
+                                                       (sigma (mapcar #'sqrt variance))
+                                                       (diff-data (mapcar (lambda (x) (diff-data-line x orig-data)) data-line))
+                                                       (err (cdr (avg-data diff-data)))
+                                                       (ms (cdr (avg-squared-data diff-data)))
+                                                       (rms (mapcar #'sqrt ms)))
+                                                  (format mean-out "~{~a~t~}~%" (cons col0 mean))
+                                                  (format var-out "~{~a~t~}~%" (cons col0 variance))
+                                                  (format sigma-out "~{~a~t~}~%" (cons col0 sigma))
+                                                  (format err-out "~{~a~t~}~%" (cons col0 err))
+                                                  (format ms-out "~{~a~t~}~%" (cons col0 ms))
+                                                  (format rms-out "~{~a~t~}~%" (cons col0 rms)))))))))))))
+               (mapcar (lambda (x) (when (and (streamp x) (open-stream-p x)) (close x)))
+                       files))))))
+
+(defun average-binary-data (start end filename subdirs &key (average-function #'mean) (prefix "mean"))
   (loop :for subdir :in (ensure-list subdirs)
      :do (let ((filenames (loop :for num :from start :to end
                              :for path = (format nil "~a~a/~@[~a/~]~a" (uiop:getcwd) num subdir filename)
@@ -194,7 +324,7 @@ print \\\"Rabi done\\\"\"")
                                           (and (streamp fstream) (open-stream-p fstream)))
                                         files)
                            (error "Some files do not exist.~&~a" files))
-                         (with-open-file (out (ensure-directories-exist (format nil "avg-~a/~a" subdir filename))
+                         (with-open-file (out (ensure-directories-exist (format nil "avg-~a/~@[~a-~]~a" subdir prefix filename))
                                               :direction :output :if-exists :supersede
                                               :element-type '(unsigned-byte 8))
                            (let ((header (read-header (first files))))
@@ -210,6 +340,8 @@ print \\\"Rabi done\\\"\"")
                (mapcar (lambda (x) (when (and (streamp x) (open-stream-p x)) (close x)))
                        files))))))
 
+(defun abs-square (num)
+  (expt (abs num) 2))
 
 (defun collect-ensemble-files (start end filename &optional subdir)
   (loop :for i :from start :to end
@@ -507,11 +639,11 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
     <EPSILON>1e-6</EPSILON>
   </ALGORITHM>
   <SEQUENCE>
-    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"each\" pn_freq=\"last\" rabi_output_freq=\"each\">100</bragg_ad>
-    <freeprop dt=\"1\" Nk=\"100\" output_freq=\"each\" pn_freq=\"last\">~d</freeprop>
-    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"each\" pn_freq=\"last\" rabi_output_freq=\"last\" >200</bragg_ad>
-    <freeprop dt=\"1\" Nk=\"100\" output_freq=\"each\" pn_freq=\"last\">~:*~d</freeprop>
-    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"each\" pn_freq=\"last\" rabi_output_freq=\"each\"~@[ chirp_mode=\"1\" no_of_chirps=\"10\"~]>100</bragg_ad>
+    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"packed\" pn_freq=\"last\" rabi_output_freq=\"each\">100</bragg_ad>
+    <freeprop dt=\"1\" Nk=\"100\" output_freq=\"packed\" pn_freq=\"last\">~d</freeprop>
+    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"packed\" pn_freq=\"last\" rabi_output_freq=\"last\" >200</bragg_ad>
+    <freeprop dt=\"1\" Nk=\"100\" output_freq=\"packed\" pn_freq=\"last\">~:*~d</freeprop>
+    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"packed\" pn_freq=\"last\" rabi_output_freq=\"each\"~@[ chirp_mode=\"1\" no_of_chirps=\"10\"~]>100</bragg_ad>
   </SEQUENCE>
 </SIMULATION>"
                                  str g (/ time 2) chirp))))))
@@ -566,9 +698,9 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
     <EPSILON>1e-6</EPSILON>
   </ALGORITHM>
   <SEQUENCE>
-    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"each\" pn_freq=\"last\" rabi_output_freq=\"last\" >200</bragg_ad>
-    <freeprop dt=\"1\" Nk=\"100\" output_freq=\"each\" pn_freq=\"last\">~d</freeprop>
-    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"each\" pn_freq=\"last\" rabi_output_freq=\"each\"~@[ chirp_mode=\"1\" no_of_chirps=\"10\"~]>100</bragg_ad>
+    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"packed\" pn_freq=\"last\" rabi_output_freq=\"last\" >200</bragg_ad>
+    <freeprop dt=\"1\" Nk=\"100\" output_freq=\"packed\" pn_freq=\"last\">~d</freeprop>
+    <bragg_ad dt=\"0.1\" Nk=\"10\" output_freq=\"packed\" pn_freq=\"last\" rabi_output_freq=\"each\"~@[ chirp_mode=\"1\" no_of_chirps=\"10\"~]>100</bragg_ad>
   </SEQUENCE>
 </SIMULATION>"
                                  str dir g (+ 100 (/ time 2)) str g (/ time 2) chirp))))))
@@ -664,7 +796,7 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
             (filename (third args))
             (subdirs (mapcar #'pathname-name (subseq args 3))))
         (if (string= (pathname-type filename) "bin")
-            (average-binary-data start end filename subdirs)
+            (average-binary-data start end filename subdirs )
             (average-data start end filename subdirs)))
       (print "noise-solver average <start> <end> <filename> <subdirs*>")))
 
@@ -706,6 +838,31 @@ noise-solver params.xml 1 20 cmd gpo3 100.000_1.bin > 100.000_1.txt
           ("average" (average-helper (rest argv)))
           ("cmd" (cmd-helper (rest argv)))
           ("fetch" (fetch-helper (rest argv)))
-          ("repl" (format t "~%* ") (print (eval (read))))
+          ("repl" (format t "~%> ") (print (eval (read))))
           (t (format t "Command not known: ~a~%" (first argv))
              (uiop:quit))))
+
+;; (defun ana-data ((data atus-vec))
+;;   (assert (= (nDims data) 1))
+;;   (loop
+;;      :for el :across (data data)
+;;      :for i upfrom 0
+;;      :for x = (+ (xMin data) (* (dx data) i))
+;;      :with mean = 0.0
+;;      :with variance = 0.0
+;;      :with sum = 0.0
+;;      :do
+;;        (incf mean (* x el))
+;;        (incf variance (* x x el))
+;;        (incf sum el)
+;;      :finally  (return (list (/ mean sum) (/ variance sum) sum))))
+
+(defun set-pathtype (file type)
+  (make-pathname :name (pathname-name file) :directory (pathname-directory file) :type type))
+
+(defun gpo3-on-dir (dir)
+  (let ((files (remove-if-not (lambda (file) (string= (pathname-type file) "bin"))
+		              (uiop:directory-files dir))))
+    (mapcar (lambda (file) (uiop:run-program (format nil "/home/strelox/bin/gpo3 ~a > ~a" file (set-pathtype file "txt"))))
+            files)
+    t))

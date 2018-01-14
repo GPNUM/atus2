@@ -52,13 +52,15 @@ int main(int argc, char *argv[])
   cout << "Number of threads " << no_of_threads << endl;
 
   omp_set_num_threads( no_of_threads );
-  ofstream fout("foo.out");
+  ofstream fout("stat.txt");
   char foo[1000];
   int N = stoi(argv[1]);
   int dn = 100;
   if (argc > 2) {
     dn = atoi(argv[2]);
   }
+
+  fout << "# x mean variance sigma" << endl;
   for (int j = 1; j <= N; j++) {
     sprintf(foo, "%i.000_1.bin", j*dn);
     cout << foo << endl;
@@ -74,40 +76,25 @@ int main(int argc, char *argv[])
     fftw_complex data[NX];
     fdata.read( (char*)data, NX*sizeof(fftw_complex));
 
-    double sum = 0;
-    double integral = 0;
-    double maxval = 0;
-    for (int i = 0; i < NX; i++) {
-      double value = sqrt(pow(data[i][0],2) + pow(data[i][1],2));
+    double sum = pow(data[0][0],2) + pow(data[0][1],2)*header.dx/3.0;
+    double mean = header.xMin*sum;
+    double variance = header.xMin*header.xMin*sum;
+    for (int i = 1; i < NX-1; i++) {
+      double value = pow(data[i][0],2) + pow(data[i][1],2);
       double x = header.xMin + i*header.dx;
-      sum += value;
-      integral += x*value;
-      if (value > maxval) {
-        maxval = value;
-      }
+      sum += ((i%2)? 4 : 2)*value*header.dx/3.0;
+      mean += ((i%2)? 4 : 2)*x*value*header.dx/3.0;
+      variance += ((i%2)? 4 : 2)*x*x*value*header.dx/3.0;
     }
-    integral /= sum;
+    double val = pow(data[N-1][0],2) + pow(data[N-1][1],2)*header.dx/3.0;
+    sum += val;
+    mean += header.xMax*val;
+    variance += header.xMax*val;
+    sum /= 10000.0;
+    mean /= 10000.0;
+    variance /= 10000.0;
 
-    double xleft = 0;
-    for (int i = 0; i < NX; i++) {
-      double value = sqrt(pow(data[i][0],2) + pow(data[i][1],2));
-      if (value > maxval/2.718) {
-        xleft = header.xMin + i*header.dx;
-        break;
-      }
-    }
-
-    double xright = 0;
-    for (int i = NX-1; i > 1; i--) {
-      double value = sqrt(pow(data[i][0],2) + pow(data[i][1],2));
-      if (value > maxval/2.718) {
-        xright = header.xMin + i*header.dx;
-        break;
-      }
-    }
-
-    fout << j*dn << "\t" << integral << "\t" << abs(xleft-integral) << "\t" << abs(xright-integral) << endl;
-
+    fout << j*dn << "\t" << mean << "\t" << variance << "\t" << sqrt(abs(variance)) << endl;
   }
-
+  cout << "stat.txt written." << endl;
 }
