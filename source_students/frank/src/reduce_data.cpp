@@ -37,14 +37,13 @@
 
 using namespace std;
 
-long pixel = 512;
 
 int main(int argc, char *argv[])
 {
   if( argc < 2 )
   {
-    cout << "Reduces 2d array to " << pixel << "x" << pixel << " array." << endl;
-    cout << "Usage: reduce_data data.bin [option] [x-offset] [y-offset]" << endl;
+    cout << "Reduces 2d array to rNX x rNY array." << endl;
+    cout << "Usage: "<< argv[0] << " data.bin [di=1] [dj=1] [rioff=0] [rjoff=0] [rNX=512] [rNY=512]" << endl;
     cout << "Error: No signal binary file specified." << endl;
     return EXIT_FAILURE;
   }
@@ -56,29 +55,50 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
   fsignal.read( (char*)&header, sizeof(generic_header));
-  long NX = header.nDimX;
-  long NY = header.nDimY;
 
-  if ( (NX < pixel) || (NY < pixel) ) {
-    cout << "Data already small" << endl;
-    return 0;
+  int64_t NX = header.nDimX;
+  int64_t NY = header.nDimY;
+  int64_t rNX = 512;
+  int64_t rNY = 512;
+  int64_t rioff = 0;
+  int64_t rjoff = 0;
+  int64_t di = 1;
+  int64_t dj = 1;
+
+  if (argc > 2) {
+    di = atoi(argv[2]);
+  }
+  if (argc > 3) {
+    dj = atoi(argv[3]);
+  }
+  if (argc > 4) {
+    rioff = atoi(argv[4]);
+  }
+  if (argc > 5) {
+    rjoff = atoi(argv[5]);
+  }
+  if (argc > 6) {
+    rNX = atoi(argv[6]);
+  }
+  if (argc > 7) {
+    rNY = atoi(argv[7]);
   }
 
-  long rNX = NX/pixel;
-  long rNY = NY/pixel;
+  cout << "NX=" << NX << " NY=" << NY << " rNX=" << rNX << " rNY=" << rNY << " rioff=" << rioff << " rjoff=" << rjoff << " di=" << di << " dj=" << dj<<endl;
+  assert(rNX <= NX);
+  assert(rNY <= NY);
+  assert(((rNX+rioff)*di) <= NX);
+  assert(((rNY+rjoff)*dj) <= NY);
 
-  header.nDimX = pixel;
-  header.nDimY = pixel;
-  header.dx *= rNX;
-  header.dy *= rNY;
+  header.nDimX = rNX;
+  header.xMin += rioff*header.dx;
+  header.dx *= di;
+  header.xMax = header.xMin+header.dx*rNX;
 
-  if (argc == 2) {
-    cout << "Normal Mode" << endl;
-  } else {
-    cout << "Alternative Mode" << endl;
-  }
-  cout << NX << "\t" << NY << "\t" << endl;
-  cout << rNX << "\t" << rNY << "\t" << endl;
+  header.nDimY = rNY;
+  header.yMin += rjoff*header.dy;
+  header.dy *= dj;
+  header.yMax = header.yMin+header.dy*rNY;
 
   double *signal_real;
   double *rsignal_real;
@@ -87,85 +107,52 @@ int main(int argc, char *argv[])
 
   if (header.bComplex) {
     signal_complex = fftw_alloc_complex( NX * NY );
-    rsignal_complex = fftw_alloc_complex( pixel * pixel );
+    rsignal_complex = fftw_alloc_complex( rNX * rNY );
     fsignal.read( (char*)signal_complex, sizeof(fftw_complex)*NX*NY );
     fsignal.close();
   } else {
     signal_real = new double[ NX * NY ];
-    rsignal_real = new double[ pixel * pixel ];
+    rsignal_real = new double[ rNX * rNY ];
     fsignal.read( (char*)signal_real, sizeof(double)*NX*NY );
     fsignal.close();
   }
 
-  long ij;
-  long rij;
-  if (argc == 2) {
-    if (header.bComplex) {
-      for (long i = 0; i < pixel; i++) {
-        for (long j = 0; j < pixel; j++) {
-          rij = j + i*pixel;
-          ij = j*rNY + i*NY*rNX;
-          rsignal_complex[rij][0] = signal_complex[ij][0];
-        }
-      }
-    } else {
-      for (long i = 0; i < pixel; i++) {
-        for (long j = 0; j < pixel; j++) {
-          rij = j + i*pixel;
-          ij = j*rNY + i*NY*rNX;
-          rsignal_real[rij] = signal_real[ij];
-        }
+  if (header.bComplex) {
+    for (int64_t ri = 0; ri < rNX; ri++) {
+      for (int64_t rj = 0; rj < rNY; rj++) {
+        int64_t rij = rj + ri*rNY;
+        int64_t ij = (rj*dj+rjoff) + (ri*di+rioff)*NY;
+        rsignal_complex[rij][0] = signal_complex[ij][0];
+        rsignal_complex[rij][1] = signal_complex[ij][1];
       }
     }
-
   } else {
-    int64_t NX_offset = 0;
-    int64_t NY_offset = 0;
-    if (argc > 4) {
-      NX_offset = atoi(argv[3]);
-      NY_offset = atoi(argv[4]);
-      assert(NX_offset < (NX-pixel));
-      assert(NY_offset < (NY-pixel));
-      cout << "New offsets" << endl;
-    }
-    if (header.bComplex) {
-      for (long i = 0; i < pixel; i++) {
-        for (long j = 0; j < pixel; j++) {
-          rij = j + i*pixel;
-          ij = (j+NY_offset) + (i+NX_offset)*NY;
-          rsignal_complex[rij][0] = signal_complex[ij][0];
-        }
-      }
-    } else {
-      for (long i = 0; i < pixel; i++) {
-        for (long j = 0; j < pixel; j++) {
-          rij = j + i*pixel;
-          ij = (j+NY_offset) + (i+NX_offset)*NY;
-          rsignal_real[rij] = signal_real[ij];
-        }
+    for (int64_t ri = 0; ri < rNX; ri++) {
+      for (int64_t rj = 0; rj < rNY; rj++) {
+        int64_t rij = rj + ri*rNY;
+        int64_t ij = (rj*dj+rjoff) + (ri*di+rioff)*NY;
+        rsignal_real[rij] = signal_real[ij];
       }
     }
   }
 
   char* bin_header = reinterpret_cast<char*>(&header);
-  string foo = string(argv[1]);
-  ofstream file1;
-  if (argc == 2) {
-    file1.open( "red_"+foo, ofstream::binary );
-  } else {
-    file1.open( "red_alt_"+foo, ofstream::binary );
-  }
-  file1.write( bin_header, sizeof(generic_header) );
+  string file = string(argv[1]);
+  string file_out = "red_"+to_string(di)+"_"+to_string(dj)+"_"+to_string(rioff)+"_"+to_string(rjoff)+"_"+to_string(rNX)+"_"+to_string(rNY)+"_"+file;
+  ofstream fout;
+  fout.open( file_out, ofstream::binary );
+
+  fout.write( bin_header, sizeof(generic_header) );
   char* bin_signal;
   if (header.bComplex) {
     bin_signal = reinterpret_cast<char*>(rsignal_complex);
-    file1.write( bin_signal, pixel*pixel*sizeof(fftw_complex) );
+    fout.write( bin_signal, rNX*rNY*sizeof(fftw_complex) );
   } else {
     bin_signal = reinterpret_cast<char*>(rsignal_real);
-    file1.write( bin_signal, pixel*pixel*sizeof(double) );
+    fout.write( bin_signal, rNX*rNY*sizeof(double) );
   }
 
-  file1.close();
+  fout.close();
   if (header.bComplex) {
     fftw_free(signal_complex);
     fftw_free(rsignal_complex);
