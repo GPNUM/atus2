@@ -208,6 +208,20 @@ namespace Fourier
       *this *= 1.0/max_value;
     };
 
+    void custom_white_noise()
+    {
+      std::cout << "dim_fs " << this->m_dim_fs << std::endl;
+
+      // Generate Gaussian Distributed White Noise in real space
+      double sigma = 0.2;
+      #pragma omp parallel
+      for (int64_t i = 0; i < this->m_dim; ++i) {
+        m_in_real[i] = gsl_ran_gaussian_ziggurat(m_r[omp_get_thread_num()], sigma);
+      }
+
+      *this *= 1.0/max();
+    };
+
     CNoise& operator*=(const double s)
     {
       if( m_in_real == nullptr )
