@@ -468,7 +468,7 @@ int main(int argc, char *argv[])
   ("positional", "Positional arguments: these are the arguments that are entered without an option", cxxopts::value<std::vector<std::string>>())
   ("help","Print help")
   ;
-  
+
   options.parse_positional({"positional"});
   auto result = options.parse(argc, argv);
 
@@ -476,7 +476,7 @@ int main(int argc, char *argv[])
 
   try
   {
-    if (result.count("") == 0)
+    if (result.arguments().size() == 0)
     {
       std::cout << options.help({""}) << std::endl;
       return EXIT_FAILURE;
@@ -484,10 +484,10 @@ int main(int argc, char *argv[])
 
     if( result.count("positional") > 0 )
     {
-      filename = result["positional"].as<std::vector<std::string>>()[0]; 
+      filename = result["positional"].as<std::vector<std::string>>()[0];
     }
     else
-    {        
+    {
       std::cout << "error parsing options: missing file name" << std::endl;
       return EXIT_FAILURE;
     }
