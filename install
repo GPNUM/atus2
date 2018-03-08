@@ -474,12 +474,12 @@ prepend-path LD_RUN_PATH     $path/lib64
 
   (format t "~%What do you want to install?
 Press number of each package to be installed and then press ENTER:
-~{~&~a - ~a~}
+~{~&~a - ~a~20t (~a)~}
 a - all
 q - Abort Installation.
 >> " (loop :for package :in *packages*
         :for index :below (length *packages*)
-        :append (list index (string-downcase (name package)))))
+        :append (list index (string-downcase (name package)) (string-downcase (version package)))))
 
   (let* ((selection (if *non-interactive-p*
                         (get-arg "-n")
