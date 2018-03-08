@@ -180,8 +180,8 @@ Otherwise returns nil. Test is done via equal."
     :version "8.0.1"
     :url "http://www.vtk.org/files/release/8.0/VTK-8.0.1.tar.gz")
 (define-software lis
-    :version "2.0.4"
-    :url "http://www.ssisc.org/lis/dl/lis-2.0.4.zip")
+    :version "2.0.6"
+    :url "http://www.ssisc.org/lis/dl/lis-2.0.6.zip")
 (define-software atus2
     :version "git")
 (setf *packages* (reverse *packages*))
@@ -277,7 +277,7 @@ Otherwise returns nil. Test is done via equal."
         ((uiop:ensure-directory-pathname (remove-tgz-filetype (file-namestring url))))
       (uiop:chdir (uiop:ensure-pathname (format nil "~abuild/" (uiop:getcwd))
                                         :ensure-directory t :ensure-directories-exist t))
-      (run (format nil "cmake -DCMAKE_INSTALL_PREFIX=~a~a -DCMAKE_BUILD_TYPE=Release \\
+      (run (format nil "cmake -DCMAKE_INSTALL_PREFIX=~a~a -DCMAKE_BUILD_TYPE=Release -DVTK_Group_Rendering=OFF -DVTK_RENDERING_BACKEND=None \\
 ~@[-DCMAKE_C_COMPILER=~a~] ~@[-DCMAKE_CXX_COMPILER=~a~] \\
 .."
                    *install-dir* full-name *CC* *CXX*))

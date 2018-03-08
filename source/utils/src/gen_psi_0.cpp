@@ -99,8 +99,20 @@ public:
 
   void run()
   {
-    string filename = m_ph.Get_simulation("FILENAME");
-    const double n_of_particles = m_ph.Get_Constant("N");
+    double n_of_particles=1;
+    std::string filename, guess_str;
+        
+    try
+    {
+      filename = m_ph.Get_simulation("FILENAME");
+      guess_str = m_ph.Get_simulation("GUESS_" + std::to_string(dim) + "D");
+      n_of_particles = m_ph.Get_Constant("N");
+    }
+    catch (const std::string info )
+    {
+      cout << info << endl;
+      throw;
+    }
 
     const long long Ntot = m_header.nDimX*m_header.nDimY*m_header.nDimZ;
 
@@ -116,16 +128,16 @@ public:
       switch (dim)
       {
       case 1:
-        mup.SetExpr(m_ph.Get_simulation("GUESS_1D"));
+        mup.SetExpr(guess_str);
         mup.DefineVar("x", &coord[0]);
         break;
       case 2:
-        mup.SetExpr(m_ph.Get_simulation("GUESS_2D"));
+        mup.SetExpr(guess_str);
         mup.DefineVar("x", &coord[0]);
         mup.DefineVar("y", &coord[1]);
         break;
       case 3:
-        mup.SetExpr(m_ph.Get_simulation("GUESS_3D"));
+        mup.SetExpr(guess_str);
         mup.DefineVar("x", &coord[0]);
         mup.DefineVar("y", &coord[1]);
         mup.DefineVar("z", &coord[2]);

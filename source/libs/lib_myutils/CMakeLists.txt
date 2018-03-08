@@ -1,5 +1,5 @@
 
-ADD_LIBRARY( myutils cft_1d.cpp cft_2d.cpp cft_3d.cpp rft_1d.cpp rft_2d.cpp rft_3d.cpp misc.cpp noise3_2d.cpp anyoption.cpp ParameterHandler.cpp zernike.cpp pugixml.cpp )
+ADD_LIBRARY( myutils cft_1d.cpp cft_2d.cpp cft_3d.cpp rft_1d.cpp rft_2d.cpp rft_3d.cpp misc.cpp noise3_2d.cpp ParameterHandler.cpp zernike.cpp pugixml.cpp )
 TARGET_LINK_LIBRARIES( myutils m gomp ${FFTW_LIBRARY_1} ${FFTW_LIBRARY_2} )
 
 ADD_EXECUTABLE( slice_3d slice_3d.cpp )

@@ -1,3 +1,6 @@
+
+[![Build Status](https://travis-ci.org/GPNUM/atus2.svg?branch=master)](https://travis-ci.org/GPNUM/atus2)
+
 # **ATUS-2**
 ## **Introduction**
 The ATUS-2 package is a collection of C++ programs designed to solve the non linear Schrödinger equation, especially the Gross--Pitaevskii equation. ATUS-2 is developed at ZARM (Center of Applied Space Technology and Microgravity, University of Bremen) and is supported by the German Space Agency (DLR) with funds provided by the Federal Ministry of Economics and Technology BMWi) due to an enactment of the German Bundestag under Grant No. DLR 50WM0942, 50WM1042, 50WM1342, 50WM1642.
@@ -32,7 +35,7 @@ The following third party packages are included in the source tree:
 
 * pugixml (http://pugixml.org/)
 * String Toolkit (http://www.partow.net/programming/strtk/index.html)
-* AnyOption (https://github.com/hackorama/AnyOption)
+* CXXOPTS (https://github.com/jarro2783/cxxopts)
 
 
 ## **Installation**
