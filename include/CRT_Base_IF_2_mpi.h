@@ -115,6 +115,8 @@ void CRT_Base_IF_2_mpi<T,dim,no_int_states>::UpdateParams()
     Amp2[1] = m_params->Get_VConstant("Amp_2",1);
     laser_k[0] = m_params->Get_Constant("laser_k");
     laser_k2[0] = m_params->Get_Constant("laser_k_2");
+    laser_dk[0] = m_params->Get_Constant("laser_dk");
+    laser_dk2[0] = m_params->Get_Constant("laser_dk_2");
     laser_domh[0] = m_params->Get_Constant("laser_domh");
     laser_domh2[0] = m_params->Get_Constant("laser_domh_2");
     m_rabi_threshold = m_params->Get_Constant("rabi_threshold");
