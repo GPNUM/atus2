@@ -52,9 +52,15 @@ namespace RT_Solver
     virtual ~Bragg_single() {};
   protected:
     void Do_Bragg_ad();
+    void Do_Bragg_simple();
     static void Do_Bragg_ad_Wrapper(void *, sequence_item &seq);
+    static void Do_Bragg_simple_Wrapper(void *, sequence_item &seq);
 
     bool run_custom_sequence( const sequence_item &item );
+    bool check_consistency( const generic_header &head );
+
+    double *m_Mirror;
+    int m_no_of_Mirror_pts;
 
     using CRT_Base_IF<T,dim,2>::DeltaL;
     using CRT_Base_IF<T,dim,2>::Amp;
@@ -74,6 +80,7 @@ namespace RT_Solver
   Bragg_single<T,dim>::Bragg_single( ParameterHandler *p ) : CRT_Base_IF<T,dim,2>( p )
   {
     this->m_map_stepfcts["bragg_ad"] = &Do_Bragg_ad_Wrapper;
+    this->m_map_stepfcts["bragg_simple"] = &Do_Bragg_simple_Wrapper;
 
     CPoint<dim> pt1;
     CPoint<dim> pt2;
@@ -109,6 +116,13 @@ namespace RT_Solver
   {
     Bragg_single *self = static_cast<Bragg_single *>(ptr);
     self->Do_Bragg_ad();
+  }
+
+  template<class T, int dim>
+  void Bragg_single<T,dim>::Do_Bragg_simple_Wrapper ( void *ptr, sequence_item &seq )
+  {
+    Bragg_single *self = static_cast<Bragg_single *>(ptr);
+    self->Do_Bragg_simple();
   }
 
   /** This function computes the laser-atom interaction by means of an analytical diagonalisation
@@ -220,6 +234,73 @@ namespace RT_Solver
         tmp1 = O21[0];
         O21[0] = eta[0]*tmp1+eta[1]*O21[1];
         O21[1] = eta[0]*O21[1]-eta[1]*tmp1;
+
+        //H*Psi (matrix * vector)
+        gamma_p[0] = Psi_1[l][0];
+        gamma_p[1] = Psi_1[l][1];
+        gamma_m[0] = Psi_2[l][0];
+        gamma_m[1] = Psi_2[l][1];
+
+        Psi_1[l][0] = (O11[0]*gamma_p[0]-O11[1]*gamma_p[1]) + (O12[0]*gamma_m[0]-O12[1]*gamma_m[1]);
+        Psi_1[l][1] = (O11[0]*gamma_p[1]+O11[1]*gamma_p[0]) + (O12[0]*gamma_m[1]+O12[1]*gamma_m[0]);
+
+        Psi_2[l][0] = (O21[0]*gamma_p[0]-O21[1]*gamma_p[1]) + (O22[0]*gamma_m[0]-O22[1]*gamma_m[1]);
+        Psi_2[l][1] = (O21[0]*gamma_p[1]+O21[1]*gamma_p[0]) + (O22[0]*gamma_m[1]+O22[1]*gamma_m[0]);
+      }
+    }
+  }
+
+  template<class T, int dim>
+  void Bragg_single<T,dim>::Do_Bragg_simple()
+  {
+    {
+      // Size of timesteps
+      const double dt = this->Get_dt();
+      // Current time + 0.5*dt
+      const double t1 = this->Get_t()+0.5*dt;
+
+      //Pointer to m_fields
+      fftw_complex *Psi_1 = this->m_fields[0]->Getp2In();
+      fftw_complex *Psi_2 = this->m_fields[1]->Getp2In();
+
+      fftw_complex O11, O12, O21, O22, gamma_p, gamma_m, om, ph;
+      double re1, im1, tmp1, tmp2, Omega;
+
+      //x coordinate
+      CPoint<dim> x;
+
+      // Pulseshapes in time
+      double F = this->Amplitude_at_time();
+
+      //Loop over all grid points
+      for ( int l=0; l<this->m_no_of_pts; l++ )
+      {
+        //Get x position
+        x = this->m_fields[0]->Get_x(l);
+
+        //Compute light field
+        Omega = -Amp[0]*Amp[0]/(4*DeltaL[1]); // :4 da Amp/2
+        double phase1 = 0;//M_PI*(1/50.0*x[0])+phase[0];
+
+        sincos( (2*Omega*dt), &im1, &re1 );
+        om[0] = re1;
+        om[1] = im1;
+
+        sincos( phase1, &im1, &re1 );
+        ph[0] = re1;
+        ph[1] = im1;
+
+        O11[0] = 0.5*(1+om[0]);
+        O11[1] = 0.5*om[1];
+
+        O22[0] = O11[0];
+        O22[1] = O11[1];
+
+        O12[0] = 0.5*(ph[0]*om[0]-ph[0]-ph[1]*om[1]);
+        O12[1] = 0.5*(ph[0]*om[1]+ph[1]*om[0]-ph[1]);
+
+        O21[0] = 0.5*(ph[0]*om[0]-ph[0]+ph[1]*om[1]);
+        O21[1] = 0.5*(ph[0]*om[1]-ph[1]*om[0]+ph[1]);
 
         //H*Psi (matrix * vector)
         gamma_p[0] = Psi_1[l][0];
