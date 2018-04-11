@@ -34,16 +34,19 @@ class zernike
 {
 public:
   zernike( const generic_header& );
+  ~zernike();
 
-  void rescale_zern( double scale);
-  void generate_zern();
+  void rescale_all_zernike( double scale);
+  //void generate_zernike();
   void calc_zernike( const generic_header&, double* field );
-  void print_zernike();
-  void read_zernike();
+  //void print_zernike();
   void set_max(double val);
+  void add_zernike( int n, int m, double scaling );
 protected:
-  void add_zern( int n, int m, double scaling );
-  void resize_zern( int x, int y );
+  void resize_zernike( int x, int y );
   vector< vector<double>> m_zern;
+  double *m_field;
+  generic_header header;
+  int m_no_pts;
 };
 #endif

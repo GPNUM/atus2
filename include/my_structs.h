@@ -30,6 +30,13 @@
 
 typedef double (*TEF)(const double, const double);
 
+struct zernike_polynomial
+{
+  int n;
+  int m;
+  double alpha;
+};
+
 #pragma pack(push)
 #pragma pack(4)
 struct generic_header

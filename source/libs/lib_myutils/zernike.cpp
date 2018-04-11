@@ -33,9 +33,16 @@ using namespace boost::math;
 
 zernike::zernike( const generic_header &header )
 {
+  //m_no_pts = header.nDimX*header.nDimY;
+  //m_field = new double[m_no_pts];
 }
 
-void zernike::rescale_zern( double scale)
+zernike::~zernike()
+{
+  //delete[] m_field;
+}
+
+void zernike::rescale_all_zernike( double scale)
 {
   for ( int i = 0; i<m_zern.size(); i++)
   {
@@ -46,12 +53,7 @@ void zernike::rescale_zern( double scale)
   }
 }
 
-void zernike::set_max( double val)
-{
-
-}
-
-void zernike::add_zern( int n, int m, double scaling )
+void zernike::add_zernike( int n, int m, double scaling )
 {
   int p, q, l, xpow, ypow, xy;
   l = n-2*m;
@@ -86,32 +88,15 @@ void zernike::add_zern( int n, int m, double scaling )
         ypow = 2 * (i+k) + p;
         xpow = n - 2 * (i+j+k) - p;
 
-        resize_zern( xpow+1, ypow +1);
+        resize_zernike( xpow+1, ypow +1);
         m_zern[xpow][ypow] += factor*scaling;
       }
     }
   }
 }
 
-void zernike::read_zernike()
-{
-  ifstream f("zernike.txt");
-  string line;
 
-  while (getline(f, line))
-  {
-    istringstream ss(line);
-
-    int n, m;
-    double scaling;
-
-    ss >> n >> m >> scaling;
-    add_zern(n,m,scaling);
-  }
-
-}
-
-void zernike::resize_zern( int x, int y )
+void zernike::resize_zernike( int x, int y )
 {
   int element;
   x >= y ? element = x : element = y;
@@ -138,9 +123,6 @@ void zernike::resize_zern( int x, int y )
 
 //}
 
-void zernike::generate_zern()
-{
-}
 
 void zernike::calc_zernike( const generic_header &header, double *field )
 {
@@ -166,14 +148,14 @@ void zernike::calc_zernike( const generic_header &header, double *field )
 
 
 
-void zernike::print_zernike()
-{
-  for ( int i = 0; i<m_zern.size(); i++)
-  {
-    for ( int j = 0; j<m_zern[i].size(); j++)
-    {
-      std::cout << m_zern[i][j] << " ";
-    }
-    std::cout << std::endl;
-  }
-}
+//void zernike::print_zernike()
+//{
+//  for ( int i = 0; i<m_zern.size(); i++)
+//  {
+//    for ( int j = 0; j<m_zern[i].size(); j++)
+//    {
+//      std::cout << m_zern[i][j] << " ";
+//    }
+//    std::cout << std::endl;
+//  }
+//}

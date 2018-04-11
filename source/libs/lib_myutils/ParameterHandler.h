@@ -84,12 +84,14 @@ public:
 
   std::vector<sequence_item> m_sequence; ///< vector of sequence_items ( Elements of the sequence )
   std::vector<analyze_item> m_analyze; ///< vector of analyze_items (for ana_tools)
+  std::vector<zernike_polynomial> m_zernike; ///< vector of zernike_polynomials (for gen_mirror)
 protected:
   void populate_constants(); ///< Read constant values from xml and populate m_map_constants
   void populate_vconstants(); ///< Read vconstants values from xml and populate m_map_vconstants
   void populate_algorithm(); ///< Read functions and save in m_map_algorithm
   void populate_simulation(); ///< populate m_map_simulation
   void populate_sequence(); ///< Read from sequence node and save in m_sequence
+  void populate_zernike();  ///< Read Zernike polynomials and populate m_zernike
   void populate_analyze();
 
   pugi::xml_document m_xml_doc; ///< load document here

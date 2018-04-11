@@ -38,9 +38,11 @@
 
 int main(int argc, char *argv[])
 {
-  const int N = 256;
+  const int N1 = 128;
+  const int N2 = 128;
   FILE *fh1=nullptr;
 
+  //ändere in xml
   //*** Setze Dateikopf-Informationen *******************************************
   //*****************************************************************************
   generic_header header = {};
@@ -48,8 +50,8 @@ int main(int argc, char *argv[])
   header.nself    = sizeof(generic_header);
   header.nDatatyp = sizeof(double);
   header.nDims    = 2;
-  header.nDimX    = N;
-  header.nDimY    = N;
+  header.nDimX    = N1; //N
+  header.nDimY    = N2; //N
   header.nDimZ    = 1;
   header.bAtom    = 1;
   header.bComplex = 0;
@@ -76,20 +78,21 @@ int main(int argc, char *argv[])
   Fourier::CNoise2_2D noise( header );
 
   zernike zern( header );
-  zern.read_zernike();
-  zern.rescale_zern(30);
-  zern.print_zernike();
+  zern.add_zernike(3,1,0.5);
+  //zern.read_zernike();
+  //zern.rescale_zernike(30);
+  //zern.print_zernike();
 
-  double zern_errors[N*N];
+  double zern_errors[N1*N2];
   zern.calc_zernike( header, zern_errors );
 
-  std::array<double,N *N> zern_test;
+  std::array<double,N1*N2> zern_test;
 
   for ( int i=0; i<header.nDimX; i++ )
   {
     for ( int j=0; j<header.nDimY; j++ )
     {
-      ij  = j+N*i;
+      ij  = j+N1*i;
       zern_test[ij] = 2*M_PI*zern_errors[ij]/lambda;
     }
   }
@@ -108,16 +111,16 @@ int main(int argc, char *argv[])
   //Generate Mirror
   noise.Do_Noise_Mirror( sigma, rho, p ); //sigma(nm)=10.0 rho=0.1 p=3
 
-  std::array<double,N *N> phase;
-  std::array<double,N *N> surface;
-  std::array<double,N *N> full_mirror;
+  std::array<double,N1*N2> phase;
+  std::array<double,N1*N2> surface;
+  std::array<double,N1*N2> full_mirror;
 
 
   for ( int i=0; i<header.nDimX; i++ )
   {
     for ( int j=0; j<header.nDimY; j++ )
     {
-      ij  = j+N*i;
+      ij  = j+N1*i;
       surface[ij] = noise.Get_Val_re(i,j);
       phase[ij] = 2*M_PI*noise.Get_Val_re(i,j)/lambda;
       full_mirror[ij] = phase[ij] + zern_test[ij];
@@ -144,112 +147,112 @@ int main(int argc, char *argv[])
 
   //----------------------------------------------------
   //Autocorrelation
-  generic_header header_ac = {};
-  header_ac = header;
-  header_ac.nDatatyp = sizeof(fftw_complex);
-  header_ac.bComplex = 1;
-  header_ac.nself_and_data = header.nself + (header.nDimX + header.nDimY)*header.nDatatyp;
+//  generic_header header_ac = {};
+//  header_ac = header;
+//  header_ac.nDatatyp = sizeof(fftw_complex);
+//  header_ac.bComplex = 1;
+//  header_ac.nself_and_data = header.nself + (header.nDimX + header.nDimY)*header.nDatatyp;
+//
+//  Fourier::cft_2d *ft = new Fourier::cft_2d( header_ac );
+//  ft->SetFix(true);
+//
+//  fftw_complex *in = ft->Getp2In();
+//  fftw_complex *out = ft->Getp2Out();
+//
+//  bzero(in,sizeof(fftw_complex)*N1*N2);
+//  for ( int i=0; i<N1; i++ )
+//  {
+//    for ( int j=0; j<N2; j++ )
+//    {
+//      ij  = j+N1*i;
+//      in[ij][0]=surface[ij];
+//    }
+//  }
+//
+//  ft->ft(-1);
+//
+//  for ( int l=0; l<N1*N2; l++ )
+//  {
+//    in[l][0] = 2*M_PI*(in[l][0]*in[l][0]+in[l][1]*in[l][1]); //Faktor 2*pi durch doppelte Fouriertransformation
+//    in[l][1] = 0;
+//  }
 
-  Fourier::cft_2d *ft = new Fourier::cft_2d( header_ac );
-  ft->SetFix(true);
-
-  fftw_complex *in = ft->Getp2In();
-  fftw_complex *out = ft->Getp2Out();
-
-  bzero(in,sizeof(fftw_complex)*N*N);
-  for ( int i=0; i<N; i++ )
-  {
-    for ( int j=0; j<N; j++ )
-    {
-      ij  = j+N*i;
-      in[ij][0]=surface[ij];
-    }
-  }
-
-  ft->ft(-1);
-
-  for ( int l=0; l<N*N; l++ )
-  {
-    in[l][0] = 2*M_PI*(in[l][0]*in[l][0]+in[l][1]*in[l][1]); //Faktor 2*pi durch doppelte Fouriertransformation
-    in[l][1] = 0;
-  }
-
-  ft->ft(1);
+//  ft->ft(1);
 
   //----------------------------------------------------------
   //Interpolation + correlation length (1/e)
-  double x[N], y[N], xi, yi;
-
-  double lim = in[N/2+N*N/2][0]/2.71828182846;
-  double eps = 10000000;
-  double cor_l=1;
-  for ( int i=0; i<N; i++ )
-  {
-    int j = N/2;
-    ij = j+N*i;
-    x[i]=(i-N/2)*header.dx;
-    y[i]=in[ij][0];
-  }
-
-  gsl_interp_accel *acc = gsl_interp_accel_alloc ();
-  gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, N);
-  gsl_spline_init (spline, x, y, N);
-
-  fh1 = fopen("spline.txt","w");
-  for (xi = x[0]; xi < x[N-1]; xi += 0.0001)
-  {
-    yi = gsl_spline_eval (spline, xi, acc);
-    double tmp = lim - yi;
-    if ( abs(tmp) < eps )
-    {
-      eps = abs(tmp);
-      cor_l = abs(xi);
-    }
-    fprintf (fh1,"%g %g\n", xi, yi);
-  }
-  fclose(fh1);
-  printf("Correlation Length = %g\n",cor_l);
-  gsl_spline_free (spline);
-  gsl_interp_accel_free (acc);
+//  double x[N1], y[N2], xi, yi;
+//
+//  double lim = in[N/2+N*N/2][0]/2.71828182846;
+//  double eps = 10000000;
+//  double cor_l=1;
+//  for ( int i=0; i<N; i++ )
+//  {
+//    int j = N/2;
+//    ij = j+N*i;
+//    x[i]=(i-N/2)*header.dx;
+//    y[i]=in[ij][0];
+//  }
+//
+//  gsl_interp_accel *acc = gsl_interp_accel_alloc ();
+//  gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, N);
+//  gsl_spline_init (spline, x, y, N);
+//
+//  fh1 = fopen("spline.txt","w");
+//  for (xi = x[0]; xi < x[N-1]; xi += 0.0001)
+//  {
+//    yi = gsl_spline_eval (spline, xi, acc);
+//    double tmp = lim - yi;
+//    if ( abs(tmp) < eps )
+//    {
+//      eps = abs(tmp);
+//      cor_l = abs(xi);
+//    }
+//    fprintf (fh1,"%g %g\n", xi, yi);
+//  }
+//  fclose(fh1);
+//  printf("Correlation Length = %g\n",cor_l);
+//  gsl_spline_free (spline);
+//  gsl_interp_accel_free (acc);
 
   //-------------------------------------------------
   //Write
   char *header2 = reinterpret_cast<char *>(&header);
-  char *header3 = reinterpret_cast<char *>(&header_ac);
+  //char *header3 = reinterpret_cast<char *>(&header_ac);
   char *Mirror1 = reinterpret_cast<char *>(&phase);
   char *Mirror2 = reinterpret_cast<char *>(&surface);
   char *zernike = reinterpret_cast<char *>(&zern_test);
   char *full = reinterpret_cast<char *>(&full_mirror);
-  char *korr = reinterpret_cast<char *>(in);
+  //char *korr = reinterpret_cast<char *>(in);
 
   ofstream file1( "Mirror.bin", ofstream::binary );
   file1.write( header2, sizeof(generic_header) );
-  file1.write( Mirror1, N*N*sizeof(double) );
+  file1.write( Mirror1, N1*N2*sizeof(double) );
   file1.close();
 
   ofstream file2( "Surface.bin", ofstream::binary );
   file2.write( header2, sizeof(generic_header) );
-  file2.write( Mirror2, N*N*sizeof(double) );
+  file2.write( Mirror2, N1*N2*sizeof(double) );
   file2.close();
 
   ofstream file4( "zernike.bin", ofstream::binary );
   file4.write( header2, sizeof(generic_header) );
-  file4.write( zernike, N*N*sizeof(double) );
+  file4.write( zernike, N1*N2*sizeof(double) );
   file4.close();
 
   ofstream file5( "full.bin", ofstream::binary );
   file5.write( header2, sizeof(generic_header) );
-  file5.write( full, N*N*sizeof(double) );
+  file5.write( full, N1*N2*sizeof(double) );
   file5.close();
 
-  ofstream file3( "Korrelation.bin", ofstream::binary );
-  file3.write( header3, sizeof(generic_header) );
-  file3.write( korr, N*N*sizeof(fftw_complex) );
-  file3.close();
+//  ofstream file3( "Korrelation.bin", ofstream::binary );
+//  file3.write( header3, sizeof(generic_header) );
+//  file3.write( korr, N1*N2*sizeof(fftw_complex) );
+//  file3.close();
 
   fh1 = fopen("surface_height.txt","w");
   gsl_histogram_fprintf(fh1,h,"%g", "%g");
   fclose(fh1);
 
-  delete ft;
+//  delete ft;
 }

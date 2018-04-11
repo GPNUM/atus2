@@ -32,6 +32,7 @@ ParameterHandler::ParameterHandler( const std::string filename )
   populate_simulation();
   populate_sequence();
   populate_analyze();
+  populate_zernike();
 }
 
 ParameterHandler::~ParameterHandler()
@@ -42,6 +43,7 @@ ParameterHandler::~ParameterHandler()
   m_map_simulation.clear();
   m_sequence.clear();
   m_analyze.clear();
+  m_zernike.clear();
 }
 
 void ParameterHandler::populate_sequence()
@@ -95,7 +97,8 @@ void ParameterHandler::populate_sequence()
       }
       catch ( const std::invalid_argument &ia )
       {
-        std::cerr << "Error Parsing xml file: Unable to convert " << i << " to double for element Duration in section Sequence\n";
+        val = 0.0;
+        //std::cerr << "Error Parsing xml file: Unable to convert " << i << " to double for element Duration in section Sequence\n";
       }
       item.duration.push_back(val);
     }
@@ -127,6 +130,53 @@ void ParameterHandler::populate_analyze()
     else item.content = false;
     item.separate = node.node().attribute("separate").as_bool(false);
     m_analyze.push_back(item);
+  }
+}
+
+void ParameterHandler::populate_zernike()
+{
+  m_zernike.clear();
+
+  double val;
+  std::string tmp, str;
+  std::vector<std::string> vec;
+
+  std::string querystr = "/SIMULATION//ZERNIKE//*";
+  pugi::xpath_node_set tools = m_xml_doc.select_nodes(querystr.c_str());
+
+  for (pugi::xpath_node_set::const_iterator it = tools.begin(); it != tools.end(); ++it)
+  {
+    pugi::xpath_node node = *it;
+
+    str = node.node().name();
+    tmp = node.node().child_value();
+    vec.clear();
+    strtk::parse(tmp,",",vec);
+
+    zernike_polynomial zern;
+
+    try
+    {
+      zern.n     = stoi(vec.at(0));
+      zern.m     = stoi(vec.at(1));
+      zern.alpha = stod(vec.at(2));
+    }
+    catch ( const std::invalid_argument &ia )
+    {
+      zern.n     = 0;
+      zern.m     = 0;
+      zern.alpha = 0.0;
+
+      std::cerr << "Error Parsing xml file: Unable to convert elements of " << str << " to double in section ZERNIKE\n";
+    }
+    catch ( const std::out_of_range &oor )
+    { 
+      zern.n     = 0;
+      zern.m     = 0;
+      zern.alpha = 0.0;
+      std::cerr << "Error Parsing xml file: " << str << " must contain 3 elements!\n";
+    }
+    m_zernike.push_back(zern);
   }
 }
 

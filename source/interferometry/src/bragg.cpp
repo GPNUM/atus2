@@ -49,7 +49,7 @@ namespace RT_Solver
   {
   public:
     Bragg_single( ParameterHandler * );
-    virtual ~Bragg_single() {};
+    ~Bragg_single();
   protected:
     void Do_Bragg_ad();
     void Do_Bragg_simple();
@@ -91,6 +91,10 @@ namespace RT_Solver
     this->m_rabi_momentum_list.push_back(pt1);
     this->m_rabi_momentum_list.push_back(pt2);
     this->m_rabi_momentum_list.push_back(pt3);
+
+    m_no_of_Mirror_pts = this->Get_dimY()*this->Get_dimZ();
+    m_Mirror = new double[m_no_of_Mirror_pts];
+    memset( m_Mirror, 0, sizeof(double)*m_no_of_Mirror_pts);
   }
 
   /** In this function one can add additional custom sequences.
@@ -99,9 +103,58 @@ namespace RT_Solver
     * @param item sequence_item for sequence name
     * @retval bool true if custom sequence is found
     */
-  template<class T, int dim>
-  bool Bragg_single<T,dim>::run_custom_sequence( const sequence_item & /*item*/ )
+
+  template<class T,int dim>
+  Bragg_single<T,dim>::~Bragg_single()
   {
+    delete [] m_Mirror;
+    cout << "called\n";
+  }
+
+  template<class T,int dim>
+  bool Bragg_single<T,dim>::check_consistency( const generic_header &head )
+  {
+    bool retval=false;
+    switch ( dim )
+    {
+    case 2:
+      retval = ( head.nDimX == this->Get_dimY() );
+      break;
+    case 3:
+      retval = ( head.nDimX == this->Get_dimY() ) && ( head.nDimY == this->Get_dimZ() );
+      break;
+    }
+    return retval;
+  }
+
+  template<class T, int dim>
+  bool Bragg_single<T,dim>::run_custom_sequence( const sequence_item & item )
+  {
+    if ( item.name == "set_mirror" )
+    {
+      //cout << item.content << endl;
+      generic_header header_tmp;
+      //std::string tmp = "Mirror.bin";
+      //ifstream file1(tmp, ifstream::binary );
+      ifstream file1(item.content, ifstream::binary );
+      file1.read( (char *)&header_tmp, sizeof(generic_header));
+
+      if ( check_consistency(header_tmp) )
+      {
+        file1.seekg( sizeof(generic_header), ifstream::beg );
+        file1.read( (char *)m_Mirror, sizeof(double)*m_no_of_Mirror_pts );
+        file1.close();
+      }
+      else
+      {
+        cout << "Change number of points for mirror." << endl;
+        exit(EXIT_FAILURE);
+        //throw new std::string("test"); //std::string "test";
+      }
+
+      return true;
+    }
+
     return false;
   }
 
