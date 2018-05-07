@@ -311,7 +311,6 @@ void display_2D( fftw_complex *field, generic_header *header, int opt, const int
   int i, j, ij;
   double x, y;
   double (*fkt)(double, double);
-
   if ( i0 < 0 || i0 > dimX ) opt &= ~I_CONST;
   if ( j0 < 0 || j0 > dimY ) opt &= ~J_CONST;
 
@@ -421,20 +420,23 @@ void display_2D( double *field, generic_header *header, int opt, const int i0, c
 }
 
 // 1D Fall
-void display_1D( fftw_complex *field, generic_header *header )
+void display_1D( fftw_complex *field, generic_header *header, int opt )
 {
   const int    dimX = header->nDimX;
   const double dx   = header->dx;
-  double x    = header->xMin - header->dx;
-  double rt   = 0.0;
-  double it   = 0.0;
+  double x   = header->xMin - header->dx;
+
+  double (*fkt)(double, double);
+
+  if ( opt & RT ) fkt = &mode1;
+  else if ( opt & IT ) fkt = &mode2;
+  else if ( opt & PH ) fkt = &mode4;
+  else fkt = &mode3;
 
   for ( int i=0; i<dimX; i++ )
   {
-    x += dx;
-    rt = field[i][0];
-    it = field[i][1];
-    printf( "%e\t%e\t%e\t%e\t%e\n", x, rt*rt+it*it, rt, it, atan2(it,rt) );
+      x += dx;
+      printf( "%e\t%e\n", x, (*fkt)(field[i][0],field[i][1]) );
   }
 }
 
@@ -491,9 +493,13 @@ int main(int argc, char *argv[])
       std::cout << "error parsing options: missing file name" << std::endl;
       return EXIT_FAILURE;
     }
+
     i0 = result["i"].as<int>();
     j0 = result["j"].as<int>();
     k0 = result["k"].as<int>();
+    if( i0 > 0 ) flags |= I_CONST;
+    if( j0 > 0 ) flags |= J_CONST;
+    if( k0 > 0 ) flags |= K_CONST;
 
     if( result["re"].as<bool>() ) flags |= RT;
     if( result["im"].as<bool>() ) flags |= IT;
@@ -552,7 +558,7 @@ int main(int argc, char *argv[])
     fftw_complex *field = fftw_alloc_complex( header.nDimX );
     in.read( (char *)field, total_no_bytes );
 
-    display_1D( field, &header );
+    display_1D( field, &header, flags );
 
     fftw_free(field);
   }
@@ -564,7 +570,7 @@ int main(int argc, char *argv[])
     double *field = fftw_alloc_real( header.nDimX );
     in.read( (char *)field, total_no_bytes );
 
-    display_1D( field, &header );
+    display_1D( field, &header);
 
     fftw_free(field);
   }
