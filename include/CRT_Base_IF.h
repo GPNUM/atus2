@@ -573,6 +573,9 @@ void CRT_Base_IF<T,dim,no_int_states>::Numerical_Raman()
 
       //---------------------------------------------
 
+      //Delta Omega
+      gsl_matrix_complex_set(A,2,2, {phi[2]+laser_domh[0],0});
+
       //Raman
       sincos((laser_k[0]*x[0]), &im1, &re1 );
 

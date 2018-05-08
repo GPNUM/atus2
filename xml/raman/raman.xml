@@ -1,0 +1,29 @@
+<SIMULATION>
+  <DIM>1</DIM>
+  <FILENAME>0.0000_1.bin</FILENAME>
+  <FILENAME_2>0.0000_2.bin</FILENAME_2>
+  <FILENAME_3>0.0000_2.bin</FILENAME_3>
+  <CONSTANTS>
+    <laser_k>8.05289</laser_k>
+    <laser_domh>6283.19</laser_domh>
+    <laser_dk>0</laser_dk>
+    <rabi_threshold>4</rabi_threshold>
+    <chirp>0</chirp>
+  </CONSTANTS>
+  <VCONSTANTS>
+    <Amp_1>-1,-1</Amp_1>
+    <Alpha_1>0.000365368,0.000365368,0.000365368</Alpha_1>
+    <Delta_L>0,-6283.19,6283.19</Delta_L>
+    <GS_1>0,0,0</GS_1>
+    <GS_2>0,0,0</GS_2>
+    <GS_3>0,0,0</GS_3>
+    <Beta>0,0,0</Beta>
+  </VCONSTANTS>
+  <ALGORITHM>
+    <NK>25</NK>
+    <NA>700</NA>
+  </ALGORITHM>
+  <SEQUENCE>
+    <raman dt="0.01" Nk="5" output_freq="last" pn_freq="last" rabi_output_freq="each">1.55</raman>
+  </SEQUENCE>
+</SIMULATION>

@@ -55,6 +55,15 @@ namespace RT_Solver
   template<class T, int dim>
   Raman_single<T,dim>::Raman_single( ParameterHandler *p ) : CRT_Base_IF<T,dim,3>( p )
   {
+    CPoint<dim> pt1;
+    CPoint<dim> pt2;
+    pt2[0] = 2*this->laser_k[0];
+    CPoint<dim> pt3;
+    pt3[0] = -2*this->laser_k[0];
+
+   this->m_rabi_momentum_list.push_back(pt1);
+    this->m_rabi_momentum_list.push_back(pt2);
+    this->m_rabi_momentum_list.push_back(pt3);
   }
 
   template<class T, int dim>
