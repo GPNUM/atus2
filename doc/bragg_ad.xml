@@ -1,0 +1,50 @@
+<SIMULATION>
+  <DIM>1</DIM>  <!--Dimension. Possible values 1,2,3 -->
+  <FILENAME>0.0000_1.bin</FILENAME>  <!--Filename of initial ground state -->
+  <FILENAME_2>0.0000_2.bin</FILENAME_2> <!--Filename of initial excited state -->
+  <!-- In <CONSTANTS> scaler quantities are defined !-->
+  <CONSTANTS>
+    <!-- Wave vector $k=0.5(k1+k2)$ of laser beams -->
+    <laser_k>8.05289</laser_k>      
+    <!-- $0.5\Delta \omega$; frequency difference of laser beams -->
+    <laser_domh>0.0471239</laser_domh> 
+    <!-- $0.5\Delta k$; wave vector difference (approximately zero) -->
+    <laser_dk>0</laser_dk>
+    <!-- Bin size for Rabi oscillations -->
+    <rabi_threshold>4</rabi_threshold>
+    <!-- Chirp of laser frequency -->
+    <chirp>0</chirp>
+  </CONSTANTS>
+  <!-- In <VCONSTANTS> vectorial quantities are defined -->
+  <VCONSTANTS>
+    <!-- Amplitude of laser 1 (first entry) and 2 (second entry). 
+         For Bragg beam splitters (analytical diagonalisation) it is 
+         assumed that both lasers have the same amplitude (only first
+         value is read). -->
+    <Amp_1>-14.0496,-14.0496</Amp_1>
+    <!-- Prefactor of the kinetic term for the three spatial dimensions -->
+    <Alpha_1>0.000365368,0.000365368,0.000365368</Alpha_1>
+    <!-- Detuning with respect to ground (first entry) 
+         and excited state (second entry) -->
+    <Delta_L>0,-6283.19</Delta_L>
+    <!-- Non-linear coefficients in form of a 2x2 matrix -->
+    <GS_1>0,0</GS_1>
+    <GS_2>0,0</GS_2>
+    <!-- Gravitational potential in x,y,z-direction -->
+    <Beta>0,0,0</Beta>
+  </VCONSTANTS>
+  <!-- The interferometer phases (beam splitter, free propagation) are defined.
+       See tutorial for more information and possible flags. --> 
+  <SEQUENCE>
+    <!-- Beam splitter (analytical diagonalisation) -->
+    <bragg_ad dt="0.2" Nk="100" output_freq="last" pn_freq="last" 
+      rabi_output_freq="each">100</bragg_ad>
+    <!-- Free propagation phase (lasers are switched off) -->
+    <freeprop dt="0.2" Nk="10" output_freq="last" pn_freq="last">7000</freeprop>
+    <bragg_ad dt="0.2" Nk="100" output_freq="last" pn_freq="last" 
+      rabi_output_freq="each">200</bragg_ad>
+    <freeprop dt="0.2" Nk="10" output_freq="last" pn_freq="last">7000</freeprop>
+    <bragg_ad dt="0.2" Nk="100" output_freq="last" pn_freq="last" 
+      rabi_output_freq="each">100</bragg_ad>
+  </SEQUENCE>
+</SIMULATION>

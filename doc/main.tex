@@ -1,0 +1,810 @@
+\documentclass[12pt]{article}
+\usepackage[left=2cm,right=2cm,top=20mm,bottom=2cm]{geometry}\textheight=235mm
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{braket}
+\usepackage{listings}
+\usepackage{bbm}
+\usepackage{cite}
+\usepackage{minted}
+\usepackage{color}
+\usepackage[T1]{fontenc}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+\usepackage{tikzstyle}
+\usepackage{tocloft}
+\usepackage{tcolorbox}
+\newcommand{\ic}{\mathbbm{i}}
+\newcommand{\ubar}[1]{\underaccent{\bar}{#1}}
+
+\begin{document}
+
+
+\section{Theory}
+In this tutorial we will focus on the numerical implementation of a matter wave interferometer in 
+the Mach-Zehnder configuration. As beam splitters and mirrors are used to manipulate quantum gases, we will focus on the physics of the beam splitting process (the mirror is just a special case of a beam splitter and therefore automatically included in the following descriptions).
+The beam splitter is approximated as a three-level system. 
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[node distance=1cm, every edge/.style={link},every node/.style={align=center}]
+
+  \node [] (gs1) at (0cm,0cm) {};
+  \node [] (gs1_r) at ($ (gs1.east) + (1.0,0.0) $) {};
+  \path[-,cap=round,draw=black,line width=2.0] (gs1) -- (gs1_r);
+  \node [] (gs2) at ($ (gs1.east) + (2.0,2.0) $) {};
+  \node [] (gs2_r) at ($(gs2.east) + (1.0,0.0)$) {};
+  \path[-,cap=round,draw=black,line width=2.0] (gs2) -- (gs2_r);
+  \node [] (ex1) at (1cm,5cm) {};
+  \node [] (ex1_r) at ($(ex1.east) + (1.0,0.0)$) {};
+  \path[-,cap=round,draw=black,line width=2.0] (ex1) -- (ex1_r);
+  \node [] (virt1) at ($(ex1.south) - (0.0,0.8)$) {};
+  \node [] (virt1_r) at ($(virt1.east) + (1.0,0.0)$) {};
+  \path[dashed,cap=round,draw=black,line width=2.0] (virt1) -- (virt1_r);
+ \path[photon,->] ($(gs1.north)+(0.5,0)$) -- ($(virt1.south)+(0.5,0)$);
+  \path[photon,->] ($(virt1.south)+(0.5,0)$) -- ($(gs2.north)+(0.5,0)$);
+  \draw[decorate,decoration={brace,amplitude=6pt},xshift=-0pt,yshift=0pt] (ex1_r) -- (virt1_r) node [black,midway,xshift=0.6cm] {$\Delta $};   
+  \node [] at ($(gs1)-(0.5,0.0)$) {$\ket{1}$}; 
+  \node [] at ($(gs2)+(1.5,0.0)$) {$\ket{3}$}; 
+  \node [] at ($(ex1)-(0.5,0.0)$) {$\ket{2}$}; 
+  \node [] (lab_om2) at ($(gs2)+(1.0,1.0)$) {$\omega_2,k_2$}; 
+  \node [] (freq1) at ($(lab_om2)-(2.8,1.0)$) {$\omega_1,k_1$}; 
+%  %%\node [left=of freq1,yshift=2cm] {{\bf Bragg diffraction}};
+%  %\node (sup) [left=of freq1,yshift=-2cm,align=left] {$E_0 \cos(k_1 x -\omega_1 t) +$ \\$E_0 \cos(-k_2 x-\omega_2 t )$};
+%  %\node [right=of sup,align=left] { Dipole coupling: $\hat{d} \cdot \vec{E}$};
+%   
+\end{tikzpicture}
+%
+\label{fig:3ns}
+\end{figure}
+
+The states $\ket{1}$ and $\ket{2}$ having energies $E_1$ and $E_2$ are coupled by means of the first laser with angular frequency 
+$\omega_1$ and wave vector $k_1$. A second laser ($\omega_2,\, k_2$) induces the transition between the states $\ket{2}$ and $\ket{3}$. Here, $\Delta$ is the detuning of the laser frequency w.r.t. the energy of the state $\ket{2}$. This leads to a supression of the occupation of state $\ket{2}$.
+
+\subsection{Single diffraction: Bragg beam splitter part I}
+\paragraph{Schrödinger equation}
+Now we will focus on Bragg beam splitters which can be approximated as a two-level system with state vectors $\ket{1}$ und $\ket{2}$, which are orthogonal to each other, i.e. $\langle 1 | 2 \rangle=0$. 
+The dynamics of the quantum system including the interaction with the external beam-splitter pulses is given by the Schrödinger equation
+\begin{align}
+  \ic\hbar \partial_t \Psi = -\frac{\hbar^2}{2m} \nabla^2\Psi + V\Psi, \label{eq:sgl_ini}
+\end{align}
+where $V=V_{ext}+V_L$. $V_{ext}$ is an arbitrary external potential, whereas $V_L$ is the interaction potential due to the interaction of the lasers with the quantum system.
+Both state vectors of the two-level system form a basis, therefore the wavefunction can be expressed as the linear combination 
+\begin{align}
+  \ket{\Psi} = 
+  \begin{pmatrix}
+    \Psi_1 \\
+    \Psi_2 
+  \end{pmatrix} =
+  c_1\ket{1}+ c_2\ket{2}, 
+\end{align}
+where  the components are functions of space and time, e.g.  $\Psi_1(\vec{r},t)$.
+Two counter propagating laser beams ($\omega_1,\, k_1$) and ($\omega_2,\, -k_2$) lead to a coupling of the ground state $\ket{1}$ with the excited state $\ket{2}$. We assume the electric field $\vec{E}$ as a plane wave, i.e. one can set two components to zero and choose $(E,0,0)$, then the dipole coupling reads $\vec{d} \cdot \vec{E} = d\cdot E$, where $\vec{d}$ is the dipole moment. 
+The Schrödinger equation now reads
+\begin{tcolorbox}
+\begin{align}
+  \ic \hbar \partial_t \begin{pmatrix}
+    \Psi_1 \\
+    \Psi_2 
+  \end{pmatrix} = 
+  -\frac{\hbar^2}{2m}\nabla^2\begin{pmatrix}
+    \Psi_1 \\
+    \Psi_2 
+  \end{pmatrix} +
+  \begin{pmatrix}
+    0 & dE(\vec{r},t) \\
+    dE^*(\vec{r},t) & E_2 
+  \end{pmatrix}\begin{pmatrix}
+    \Psi_1 \\
+    \Psi_2 
+  \end{pmatrix}.
+\end{align}
+\end{tcolorbox}
+Note that the ground state energy has been set to $E_1=0$. 
+
+\paragraph{Gross-Pitaevskii equation}
+As for the case of the Gross-Pitaevskii equation we have
+\begin{eqnarray}
+i \hbar \partial_t \Psi = -\frac{\hbar^2}{2m}\nabla^2\Psi+V(\vec{r})\Psi+g|\Psi|^2\Psi,\label{eq:GPE_dyn}
+\end{eqnarray}
+where $g$ is given by the s-wave scattering length $\frac{4\pi \hbar^2}{m}a_s$ and the order parameter ("wavefunction of the condensate") is a function of space and time, i.e.  $\Psi(\vec{r},t)$. Again, the wavefunction is decomposed by means of the state vectors of the two-level system  leading to a matrix-vector Gross-Pitaevskii equation with a $2 \times 2$ Hamiltonian $H_{ij}$
+\begin{align}
+  \ic \hbar \partial_t \begin{pmatrix}
+    \Psi_1 \\
+    \Psi_2 
+  \end{pmatrix} = 
+  \begin{pmatrix}
+    H_{11}& H_{12} \\
+    H_{21} & H_{22}
+  \end{pmatrix}\begin{pmatrix}
+    \Psi_1 \\
+    \Psi_2 
+  \end{pmatrix}.
+\end{align}
+The diagonal elements of the Hamiltonian $H_{ij}$ read
+
+\begin{eqnarray}
+H_{11}& = &  -\frac{\hbar^2}{2m}\nabla^2 +g_{11} |\Psi_1|^2 +g_{12} |\Psi_2|^2 \\
+H_{22}& = &  -\frac{\hbar^2}{2m}\nabla^2 +\hbar \omega_{12}+g_{21} |\Psi_1|^2 +g_{22} |\Psi_2|^2 ,
+\end{eqnarray}
+and the non-diagonal elements describe the interaction with the lasers
+\begin{eqnarray}
+V_{12} =V_{21}^* = dE(\vec{r},t).
+\end{eqnarray}
+
+Note that $g_{12}=g_{21}$ and the nonlinearity factor is determined by the s-wave scattering length $a_{ij}$, that is $g_{ij}=\frac{4\pi \hbar^2}{m}a_{ij}$.
+Note that the the two states $\ket{1,2}$ interact mutually with each other. This is encoded in the $(ij)$-components of the nonlinearity factor $g_{ij}$ what is similar to the case of two-species BECs. Therefore, the Hamilton above is capapble of describing this case, too. 
+\subsection{Single diffraction: Bragg beam splitter part II}
+From now on we will focus on the Gross-Pitaevskii equation as the linear case is recovered by just setting the nonlinear term to zero.  
+In order to specify the interaction with the laser field, we describe the electrical field by a superposition of two counter propagating electric fields
+\begin{align}
+  E &= A\left[\cos(k_1x-\omega_1 t-\phi_L(x)/2)+\cos(-k_2x-\omega_2 t+\phi_L(x)/2)\right] ,
+  \label{eq:efeld}
+\end{align}
+where $\phi_L(x)$ is a laser phase which can be spatially dependent. This term is important when one wishes to include phase front errors of the lasers. 
+Applying the Rotating-Wave Approximation neglects fastly oscillating terms, i.e.
+\begin{align}
+  \cos(\omega t) &= \frac{1}{2}\left( e^{\ic\omega t}+e^{-\ic\omega t}\right) 
+                = \frac{1}{2}e^{\ic\omega t}\left( 1+ e^{-2\ic\omega t}\right) 
+                \approx \frac{1}{2}e^{\ic\omega t}.
+\end{align}
+The magnitude of $\omega$ in real experiments is  usually of the order THz.
+
+The electric field now reads
+\begin{align}
+  E(x,t) &= A\left[e^{\ic (k_1x-\omega_1 t-\phi_L(x)/2)}+e^{\ic(-k_2x-\omega_2 t+
+    \phi_L(x)/2)} \right] 
+\end{align}
+Now the GPE is transformed to the Dirac picture (interaction picture) by means of the unitary matrix $U=\exp{(i H_0 t/\hbar)}$. For the wavefunction this yields $\tilde{\Psi} = U^\dagger \Psi$ and the time-independent operator $H_0$ is given by
+\begin{align}
+  H_0 = \begin{pmatrix}
+    0 & 0 \\
+    0 & \frac{\hbar(\omega_1+\omega_2)}{2} \\
+  \end{pmatrix}.
+\end{align}
+The matrix elements describing the interaction with the lasers in the dipole approximation are given by the non-diagonal elements
+\begin{align}
+   V_{12}=V_{21}^*= d_{12}\frac{A}{2}\left[e^{\ic\left(k_1x-\Delta \omega t - 
+  \varphi_L/2 \right)}+ e^{-\ic\left(k_2x-\Delta\omega t - \varphi_L/2 
+  \right)}\right]\label{eq:vlicht},
+\end{align}
+where we defined $\Delta\omega := \frac{\omega_1-\omega_2}{2}$. The transformed interaction operator yields 
+\begin{align}
+  V_L = \begin{pmatrix}
+    0 & V_{12}\\
+    V_{12}^* & \Delta_1 
+  \end{pmatrix},
+\end{align}
+where the detuning is given by 
+$\Delta_1 := E_2-\frac{\hbar(\omega_1+\omega_2)}{2} $.
+Note that the dependence on $\omega$ disappeared and instead the difference $\Delta \omega$ appears. In typical experiments the magnitudes are  $\omega \approx$ THz, whereas $\Delta \omega \approx$ kHz. This is quite practical for numerical similations in order to avoid  the introduction of several simultaneous time scales differing by orders of magnitude. 
+The full Gross-Pitaevskii equation now reads
+\begin{tcolorbox}
+\begin{align}
+  \ic \hbar \partial_t \begin{pmatrix}
+    \Psi_1 \\
+    \Psi_2 
+  \end{pmatrix} =  -\frac{\hbar^2}{2m}\nabla^2
+  \begin{pmatrix}
+    \Psi_1 \\
+    \Psi_2 
+  \end{pmatrix}
+  +  \begin{pmatrix}
+    0 & V_{12}\\
+    V_{12}^* & \Delta_1 
+  \end{pmatrix}
+  \begin{pmatrix}
+    \Psi_1 \\
+    \Psi_2 
+  \end{pmatrix}+
+\begin{pmatrix}
+    g_{11}& g_{12}\\
+    g_{12} & g_{22} 
+  \end{pmatrix}   
+   \begin{pmatrix}
+    |\Psi_1|^2 \\
+    |\Psi_2|^2 
+  \end{pmatrix} 
+  \begin{pmatrix}
+    \Psi_1 \\
+    \Psi_2 
+  \end{pmatrix}. \label{eq:GPE_dyn_matrix}
+\end{align}
+\end{tcolorbox}
+\textbf{Note: From now on $\Psi(\vec{r},t)$ is understood as a vector until otherwise stated!}
+\subsection{Numerical solution of the time dependent GPE}
+The dynamics of the quantum system is described by the equation (\ref{eq:GPE_dyn_matrix}) and the solution is formally given by the time evolution operator
+\begin{eqnarray}
+  \Psi(\vec{r},t) = \hat{T} \exp\left(-\frac{\ic}{\hbar}\int_{t_0}^t H(\tau)\,d\tau\right)
+\Psi(\vec{r},t_0) \label{eq:Loesung},
+\end{eqnarray}
+where $\Psi(\vec{r},t_0)$ is the solution to initial time $t_0$ and
+$\hat{T}$ is the time ordering operator. 
+
+The Hamiltonian is split into the kinetic $\hat{K}$ and potential term $\hat{V}$ 
+\begin{eqnarray}
+\hat{H}=\hat{K}+\hat{V}.
+\end{eqnarray}
+Applying the operator splitting 
+\begin{eqnarray}
+  e^{\hat{K}+\hat{V}}\approx e^{\frac{1}{2}\hat{K}}e^{\hat{V}}e^{\frac{1}{2}\hat{K}}
+\end{eqnarray}
+the time propagated wavefunction $\Psi(\vec{r},t_0) \rightarrow \Psi(\vec{r},t_0+\Delta t)$ reads
+\begin{tcolorbox}
+\begin{eqnarray}
+\Psi(\vec{r},t_0+\Delta t) \approx \exp\left(-\frac{\ic}{\hbar}\frac{\Delta t}{2}\hat{K}\right)
+\exp\left(-\frac{\ic}{\hbar}\Delta t\hat{V}\right)\exp\left(-\frac{\ic}{\hbar}\frac{\Delta t}{2}\hat{K}\right)\Psi(\vec{r},t_0).
+\end{eqnarray}
+\end{tcolorbox}
+Due to  the fact that the operators $\hat{K}$ and $\hat{V}$ do not commute, one needs to estimate the error. 
+Utilizing the Baker-Campbell-Hausdorff equation
+\begin{eqnarray}
+e^{\hat{K}}e^ {\hat{V}}=e^{\hat{Z}},
+\end{eqnarray} 
+where $\hat{Z}$
+\begin{eqnarray}
+  \hat{Z}=\hat{K}+\hat{V}+\frac{1}{2}[\hat{K},\hat{V}]+\frac{1}{12}([\hat{K},
+  [\hat{K},\hat{V}]]+[\hat{V},[\hat{V},\hat{K}]])+\ldots
+\end{eqnarray}
+one calculates the difference between the approximated solution and the real one, that is
+\begin{eqnarray}
+e^{\frac{\Delta t}{2} \hat{K}}e^{\Delta t \hat{V}}e^{\frac{\Delta t}{2} 
+\hat{K}}-e^{\Delta t (\hat{K}+\hat{V})}, 
+\end{eqnarray}
+yielding an error of $\mathcal{O}(\Delta t^3)$.
+
+
+\subsection{Kinetic Operator}
+The kinetical part of the operator is described by 
+$$\exp\left(-\frac{\ic}{\hbar}\frac{\Delta t}{2}\hat{K}\right) \Psi(r,t)$$.
+It can be calculated numerically by means of pseudo-spectral methods, here by means of Fourier transformation. 
+The Fourier transformation $\mathcal{F}$
+transforms $\Psi$ to the momentum representaton $\Psi_p$.
+For the kinetic operator this yields
+$$-\hbar^2\nabla^2/2m\longrightarrow -\hbar^2k^2/2m.$$ 
+By means of this the exponential kinetic operator function can be calculated easily and is applied to the wavefunction. 
+After this, $\Psi_p$ is transformed back by the inverse Fourier transformation 
+$\mathcal{F}^{-1}$ to position space. 
+The complete solution scheme for the kinetic operator now reads:
+\begin{eqnarray}
+\exp\left(\ic\frac{\Delta t}{2}\frac{\hbar\nabla^2}{2m}\right)\Psi(r,t)=\mathcal{F}^{-1}
+\left\{\exp\left(\ic\frac{\Delta t}{2}\frac{\hbar k^2}{2m}\right)\mathcal{F}\Psi(r,t)\right\}.
+\end{eqnarray}
+
+\subsection{Potential part}
+The potential term is given by the light-matter interaction 
+(\ref{eq:licht}) and the exponential function is 
+\begin{align}
+  \exp\left(-\frac{\ic}{\hbar}\Delta t \hat{V}\right) 
+\end{align}
+with the interaction    
+\begin{eqnarray}
+  \hat{V} = \begin{pmatrix}
+  0 & V_{12} \\
+V_{12}^* & \Delta_1.
+\end{pmatrix}
+\end{eqnarray} 
+Because of the fact that $\hat{V}$ is hermitean, there always exists an unitary transformation $U$,
+which converts $\hat{V}$ to diagonal form, i.e. $\hat{D}=U\hat{V}U^{\dagger}$. 
+Writing the exponential function as a series expansion, 
+it can be shown that
+\begin{align}
+  \exp\left(\hat{V}\right) = U^\dagger\exp\left(\hat{D}\right)U.
+\end{align}
+This can be utilized to calculate $\exp(\hat V)$. Therefore, the potential term yields
+\begin{eqnarray}
+\exp\left(-\frac{\ic\Delta t}{\hbar} \hat{V}\right) = U^\dagger 
+\begin{pmatrix}
+\exp(-\ic E_1\Delta t/\hbar) &  0\\ 0& \exp(-\ic E_2\Delta t/\hbar) 
+\end{pmatrix} U \label{eq:num}
+\end{eqnarray}
+Here, $E_1$ and $E_2$ are the eigenvalues of $\hat{V}$.
+
+\section{Dimensionless GPE}
+\subsection{Time dependent Gross-Pitaevskii-Equation}
+For 
+\begin{align}
+\Psi_{1,2} : \mathbb{R}^3 \rightarrow \mathbb{C} \nonumber
+\end{align}
+the coupled 2-species Gross-Pitaevskii equation reads
+\begin{align}
+i \hbar \partial_t \Psi_1 &= \left( -\dfrac{\hbar^2}{2m_1} \Delta + V_1 + g_{12} \vert\Psi_2\vert^2 + g_{11} \vert\Psi_1\vert^2\right)\Psi_1 ,\nonumber\\
+i \hbar \partial_t \Psi_2 &= \left( -\dfrac{\hbar^2}{2m_2} \Delta + V_2 + g_{21} \vert\Psi_1\vert^2 + g_{22} \vert\Psi_2\vert^2\right)\Psi_2 \nonumber,
+\end{align}
+and leads to
+\begin{align}
+i\partial_t \Psi_1 &= \left(- \dfrac{\hbar}{2m_1} \Delta +\dfrac{1}{\hbar} V_1 + \dfrac{1}{\hbar} g_{12} \vert\Psi_2\vert^2 + \dfrac{1}{\hbar} g_{11} \vert\Psi_1\vert^2\right)\Psi_1 \label{tdnlse01},\\
+i\partial_t \Psi_2 &= \left(- \dfrac{\hbar}{2m_2} \Delta + \dfrac{1}{\hbar} V_2 + \dfrac{1}{\hbar} g_{21} \vert\Psi_1\vert^2 + \dfrac{1}{\hbar} g_{22} \vert\Psi_2\vert^2\right)\Psi_2 \label{tdnlse02}.
+\end{align}
+
+\paragraph{Dimensionless equation}
+We rescale with $L$ which is a length scale (e.g. typical extension of the BEC) and $T$, being a time scale (e.g. typical time connected to the harmonic trap frequency $\omega$) for $n$-dimensions according to
+\begin{align}
+t \rightarrow Tt, \mathbf{x} \rightarrow L \mathbf{x}, \Psi_1 \rightarrow \sqrt{N_1} \Psi_1 / L^{n/2}, \Psi_2 \rightarrow \sqrt{N_2} \Psi_2 / L^{n/2} \nonumber
+\end{align}
+and equations (\ref{tdnlse01}) and (\ref{tdnlse02}) become
+\begin{align}
+\dfrac{i}{T}\partial_t \Psi_1 &= \left( -\dfrac{\hbar}{2m_1L^2} \Delta + \dfrac{1}{\hbar} V_1(L\mathbf{x},Tt) + \dfrac{1}{\hbar} \dfrac{g_{12}N_2}{L^n} \vert\Psi_2\vert^2 + \dfrac{1}{\hbar} \dfrac{g_{11}N_1}{L^n} \vert\Psi_1\vert^2\right)\Psi_1 \nonumber \\
+\dfrac{i}{T}\partial_t \Psi_2 &= \left( -\dfrac{\hbar}{2m_2L^2} \Delta + \dfrac{1}{\hbar} V_2(L\mathbf{x},Tt) + \dfrac{1}{\hbar} \dfrac{g_{21}N_1}{L^n} \vert\Psi_1\vert^2 + \dfrac{1}{\hbar} \dfrac{g_{22}N_2}{L^n} \vert\Psi_2\vert^2\right)\Psi_2, \nonumber
+\end{align}
+from which we get
+\begin{center}
+\begin{tcolorbox}
+\begin{eqnarray}
+i\partial_t \Psi_1 &= \left( -\tilde{\alpha}_1 \Delta + \dfrac{1}{\hbar} T V_1(L\mathbf{x},Tt) +  \gamma_{12} \vert\Psi_2\vert^2 + \gamma_{11} \vert\Psi_1\vert^2\right)\Psi_1 \label{tdnlse1} \\
+i\partial_t \Psi_2 &= \left( -\tilde{\alpha}_2 \Delta + \dfrac{1}{\hbar} T V_2(L\mathbf{x},Tt) +  \gamma_{21} \vert\Psi_1\vert^2 + \gamma_{22} \vert\Psi_2\vert^2\right)\Psi_2, \label{tdnlse2}
+\end{eqnarray}
+\end{tcolorbox}
+\end{center}
+where we introduced as a scale factor $\tilde{\alpha}_X=\dfrac{\hbar T}{2 m_X L^2}$ and rewrote the nonlinearity parameter according to 
+\begin{align}
+\gamma_{11} &:= \frac{g_{11} T N_1}{\hbar L^n}=\dfrac{4\pi \hbar}{m_1} \dfrac{TN_1}{L^n} a_{11} \\
+\gamma_{12} &:= \frac{g_{12} T N_2}{\hbar L^n}=\dfrac{2\pi \hbar (m_1+m_2)}{m_1m_2} \dfrac{TN_2}{L^n} a_{12} \\
+\gamma_{21} &:= \frac{g_{21} T N_1}{\hbar L^n}=\dfrac{2\pi \hbar (m_1+m_2)}{m_1m_2} \dfrac{TN_1}{L^n} a_{21} \\
+\gamma_{22} &:= \frac{g_{22} T N_2}{\hbar L^n}=\dfrac{4\pi \hbar}{m_2} \dfrac{TN_2}{L^n} a_{22},
+\end{align}
+using
+\begin{eqnarray}
+ g_{ii}= 4 \pi \hbar^2 \dfrac{a_{ii}}{m_i} \qquad g_{ij}= 2 \pi \hbar^2 a_{ij}\dfrac{m_i+m_j}{m_i m_j}.
+\end{eqnarray}
+Note the simultaneous $T,L$ dependency of the dimensionless parameters $\gamma_{ij}$ !  
+
+\subsection{Time independent Gross-Pitaevskii equation}
+\paragraph{Dimensionless equation}
+One obtains the time-independent dimensionless equation of motion by making the following ansatz for the order parameter
+\begin{equation}
+ \Psi_j(\mathbf{r},t):=\Psi_j(\mathbf{r}) \exp{\left(-i/\hbar \mu_j t\right)},
+\end{equation}
+where $\mu$ is the chemical potential.  
+Setting $\Psi_i:=\Psi_i(\mathbf{r})$ and applying the ansatz in equations (\ref{tdnlse1}) and (\ref{tdnlse2}) one gets
+\begin{eqnarray}
+-i\frac{\mu_1}{\hbar}\Psi_1&=&\left(-\tilde{\alpha}_1 \Delta + \dfrac{1}{\hbar} TV_1(L\mathbf{x}) + \gamma_{12} \vert\Psi_2\vert^2 + \gamma_{11} \vert\Psi_1\vert^2\right)\Psi_1, \nonumber \\
+-i\frac{\mu_2}{\hbar}\Psi_2&=&\left(-\tilde{\alpha}_2 \Delta + \dfrac{1}{\hbar} TV_2(L\mathbf{x}) + \gamma_{21} \vert\Psi_1\vert^2 + \gamma_{22}\vert\Psi_2\vert^2\right)\Psi_2. \nonumber
+\end{eqnarray}
+We redefine the chemical potential by means of $\varepsilon_i:=-\dfrac{ \mu_i}{\hbar}$ and get the corresponding time-independent equations to equations (\ref{tdnlse1}) and (\ref{tdnlse2}) ,
+\begin{center}
+\begin{tcolorbox}
+\begin{eqnarray}
+\varepsilon_1 \Psi_1 &=&\left(-\tilde{\alpha}_1 \Delta + \dfrac{1}{\hbar} V_1(L\mathbf{x}) + \gamma_{12} \vert\Psi_2\vert^2 + \gamma_{11}\vert\Psi_1\vert^2\right)\Psi_1, \label{tinlse1} \\
+\varepsilon_2 \Psi_2 &=&\left(-\tilde{\alpha}_2 \Delta + \dfrac{1}{\hbar} V_2(L\mathbf{x}) + \gamma_{21} \vert\Psi_1\vert^2 + \gamma_{22} \vert\Psi_2\vert^2\right)\Psi_2. \label{tinlse2}
+\end{eqnarray}
+\end{tcolorbox}
+\end{center}
+
+
+\subsection{External potentials }
+\paragraph{Dipole potential (trapping potential)}
+\begin{align}
+V_X = - \dfrac{P Re(\alpha_X)}{\pi c \varepsilon_0} \dfrac{1}{w^2(z)} \exp\left( -2\dfrac{|\mathbf{r}|^2}{w^2(z)} \right) \label{optdippot1},
+\end{align}
+where index $X=\{Rb, K\}$ and $|\mathbf{r}|^2= x^2+y^2+z^2 := \rho^2+z^2$.
+\begin{align}
+w^2(z) = w_0^2\left(1+z^2/z^2_R\right)
+\end{align}
+
+\begin{align}
+z_R = \dfrac{\pi w_0^2}{\lambda M^2} \,\,\text{ Rayleigh length} 
+\end{align}
+\paragraph{Approximated potential}
+\begin{eqnarray}
+V_X &=& -\hat{V}_X\left(1-2\left(\frac{\rho}{w_0}\right)^2-\left(\frac{z}{z_R}\right)^2\right)\\
+&:=& \frac{1}{2}m_X\left(\omega_{\rho}^2 \rho^2+\omega_z^2 z^2\right)-\hat{V}_X \label{optdippot2},
+\end{eqnarray}
+where 
+\begin{eqnarray}
+\hat{V}_X&:=&\dfrac{P Re(\alpha_X)}{\pi c \varepsilon_0 w_0^2}\\
+\omega_{\rho}^2&:=&\frac{4\hat{V}_X}{m_X w_0^2} \quad \omega_z^2:= \frac{2\hat{V}_X}{m_X z_R^2} .
+\end{eqnarray}
+\paragraph{Dimensionless dipole potential}
+The argument and the function of the dipole potential are scaled according to
+\begin{align}
+(\mathbf{r}) \rightarrow (L\mathbf{r}), \qquad V_X(\mathbf{r}) \rightarrow \dfrac{T}{\hbar} V_X(L\mathbf{r}).
+\end{align}
+This yields for (\ref{optdippot1})
+\begin{eqnarray}
+ V_X &=& - \dfrac{P Re(\alpha_X)}{\pi c \varepsilon_0} \dfrac{1}{w^2(z)} \exp\left( -2\dfrac{|\mathbf{r}|^2}{w^2(z)} \right) \\
+ &\rightarrow& - \dfrac{P Re(\alpha_X) T}{\pi \hbar c \varepsilon_0 w_0^2\left(1+(Lz)^2/z^2_R\right)}\exp\left( -\dfrac{2L^2|\mathbf{r}|^2}{w_0^2\left(1+(Lz)^2/z^2_R\right)} \right),
+\end{eqnarray}
+thus
+\begin{center}
+\begin{tcolorbox}
+\begin{eqnarray}
+ V_X(\mathbf{r})=\dfrac{\eta_X}{1+\kappa^2} \exp{\left(-\dfrac{\delta |\mathbf{r}|^2}{1+\kappa^2}\right)}. 
+\end{eqnarray}
+\end{tcolorbox}
+\end{center}
+Here is $\eta_X =  \dfrac{P Re(\alpha_X) T}{\pi\hbar c \varepsilon_0 w_0^2}, \kappa = L / z_R $ and $\delta = 2 L^2 / w_0^2$.
+\paragraph{Dimensionless Newtonian gravity potential}
+Again we have 
+\begin{align}
+(\mathbf{r}) \rightarrow (L\mathbf{r}), \qquad V_X(\mathbf{r}) \rightarrow \dfrac{T}{\hbar} V_X(L\mathbf{r}).
+\end{align}
+and for the Newtonian potential we write $V(z)_X= m_X g z$.
+This transforms to 
+\begin{center}
+\begin{tcolorbox}
+\begin{eqnarray}
+m_Xgz\rightarrow \dfrac{T L}{\hbar} m_X g z :=\beta_X z,
+\end{eqnarray}
+\end{tcolorbox}
+\end{center}
+with $\beta_X=\dfrac{T L}{\hbar} m_X$.
+\paragraph{Dimensionless harmonic trap potential}
+Shall $V_X(\mathbf{r})$ be a time independent harmonic trap potential which in the general case reads
+\begin{eqnarray}
+ V_X(\mathbf{r})=\frac{1}{2} m_X \left(\omega^2_x x^2+\omega^2_y y^2+\omega^2_z z^2\right),
+\end{eqnarray}
+then the rescaled and dimensionless equation reads
+\begin{center}
+\begin{tcolorbox}
+\begin{eqnarray}
+V_X(\mathbf{r}) &=& \dfrac{1}{2}\dfrac{TL^2}{\hbar} m_X \left(\omega^2_x x^2+\omega^2_y y^2+\omega^2_z z^2\right)\\
+&:=& \tilde{\omega}^2_{X,x} x^2+\tilde{\omega}^2_{X,y} y^2+\tilde{\omega}^2_{X,z} z^2,
+\end{eqnarray}
+\end{tcolorbox}
+\end{center}
+with $\tilde{\omega}^2_{X,i}:=\dfrac{1}{2}\dfrac{TL^2}{\hbar} m_X \omega^2_i$.
+\paragraph{Dimensionless approximated optical dipole potential}
+For the approximated dipole potential (\ref{optdippot2}) the dimensionless equation reads
+\begin{eqnarray}
+V_X(\mathbf{r}) & = & -\dfrac{\hat{V}_X T}{\hbar}\left(1-L^2\left(2\left(\frac{\rho}{w_0}\right)^2-\left(\frac{z}{z_R}\right)^2\right)\right)\\
+& = & \frac{1}{2}\dfrac{TL^2}{\hbar}m_X\left(\omega_{\rho}^2 \rho^2+\omega_z^2 z^2\right)-\dfrac{T}{\hbar}\hat{V}_X, 
+\end{eqnarray}
+thus,
+\begin{center}
+\begin{tcolorbox}
+\begin{eqnarray}
+V_X(\mathbf{r}) =  \tilde{\omega}_{X,\rho}^2 \rho^2+\tilde{\omega}_{X,z}^2 z^2-\dfrac{T}{\hbar}\hat{V}_X.  
+\end{eqnarray}
+\end{tcolorbox}
+\end{center}
+
+
+\subsection{List of all parameters} \label{Parameterlist}
+ \begin{align}
+ \epsilon_1 &:= -\dfrac{T \mu_1}{\hbar} \\
+ \epsilon_2 &:= -\dfrac{T \mu_2}{\hbar} \\
+ \kappa &:= L / z_R \\
+ \delta &:= 2 L^2 / w_0^2 \\
+ \eta_1 &:= \dfrac{P Re(\alpha_1) T}{\pi\hbar c \varepsilon_0 w_0^2}\\
+ \eta_2 &:= \dfrac{P Re(\alpha_2) T}{\pi\hbar c \varepsilon_0 w_0^2}\\
+ \tilde{\alpha}_1 &:=\dfrac{\hbar T}{2 m_1 L^2}\\
+ \tilde{\alpha}_2 &:=\dfrac{\hbar T}{2 m_2 L^2}\\
+ \beta_1 &:= \dfrac{T L m_1 g_F }{\hbar} \\
+ \beta_2 &:=  \dfrac{T L m_2 g_F }{\hbar} \\
+ \gamma_{11} &:= \frac{g_{11} T N_1}{\hbar L^n}\\
+ \gamma_{12} &:= \frac{g_{12} T N_2}{\hbar L^n}\\
+ \gamma_{21} &:= \frac{g_{21} T N_1}{\hbar L^n} \\
+ \gamma_{22} &:= \frac{g_{22} T N_2}{\hbar L^n}\\
+ \tilde{\omega}^2_{X,i}&:=\dfrac{1}{2}\dfrac{TL^2}{\hbar} m_X \omega^2_i
+ \end{align}
+
+\section{Example}
+\label{sec:example}
+In the following we present a brief introduction to our simulation package by discussing
+a Bragg beam splitter as it is used in atom interferometry. 
+The files used in this example are located in
+the directory \mintinline{bash}{atus2/xml/bragg}.\\
+To calculate the time evolution of the wave packet 
+we need, according to equation XYZ, the initial wave function $\Psi_0(t=0)$ of the
+quantum system.
+These wave functions are generated by the
+\mintinline{bash}{gen_psi_0} tool which is an abbreviation for "generate $\Psi_0$".
+$\Psi_0$ is composed of two wave functions; the ground state $\Psi_1$
+and the excited state $\Psi_2$. The wave functions are generated by
+\begin{minted}{bash}
+$ gen_psi_0 gauss.xml
+$ gen_psi_0 zero.xml
+\end{minted}
+respectively. An example for a time evolution of a wave packet is given by the file 
+\mintinline{bash}{bragg_ad.xml}. The time evolution is divided into a beam splitter
+and free propagation phase. In case of Bragg beam splitters,
+interferometer sequences are started by the command:
+\begin{minted}{bash}
+$ bragg bragg_ad.xml
+\end{minted}
+%A more in depth introduction for possible parameters is found in the following chapter.
+Wave functions are written to file in binary format. Files can be converted to plain
+text files with the gpo3 tool:
+\begin{minted}{xml}
+$ gpo3 example.bin > example.txt
+\end{minted}
+These files can be plotted with the usual programs like gnuplot, phython, matlab, ...
+For instance in gnuplot, plotting the final ground state $|\Psi_1|^2$ (after a propagation time $t=7100$) is done by the following commands:
+\begin{minted}{gnuplot}
+  p "<gpo3 7100.000_1.bin" w l
+\end{minted}
+The excited state $|\Psi_2|^2$ is plotted by 
+\begin{minted}{gnuplot}
+  p "<gpo3 7100.000_2.bin" w l
+\end{minted}
+In this case no intermediate file, i.e. \mintinline{bash}{example.txt}, is created. 
+For two or three dimensional wave functions slices in only one direction can be plotted.  
+Additionally the real or imaginary part can be plotted. Example:
+\begin{minted}{gnuplot}
+ p "<gpo3 -i 8 --re 2d_func.bin" w l
+\end{minted}
+Here the x coordinate is fixed at point 8. Use \mintinline{bash}{gpo3 --help} to see
+all possible options.
+
+\section{Introduction to our xml-files}
+\label{sec:introduction_to_xml_files}
+In this section we discuss the structure, options and tags of our xml-files.
+
+\subsection{Generating initial wave functions}
+\label{sub:generating_initial_wave_functions}
+
+In general, our xml tags are encased by 
+\mintinline{xml}{<SIMULATION>...</SIMULATION>}.
+Below is a minimal, annotated example file for generating an initial wave function
+(see \mintinline{xml}{atus2/xml/bragg/gauss.xml}).
+\inputminted{xml}{gauss.xml} \noindent 
+It is important to note that the number of grid points \mintinline{xml}{<NX>} 
+should be a multiple of 2, because this leads to faster FFTs.
+The shape of the wave function is set with the \mintinline{xml}{<GUESS_1D>} tag. 
+Possible functions are the common cmath functions. 
+Variables can be used in this functions, if they are later defined in the section 
+\mintinline{xml}{<CONSTANTS>}.
+If you change the number of grid points in one xml-file, keep in mind that the
+grid points must coincide for both the ground and excited state.
+In x-direction more grid points are needed.
+This can be seen in the following simplified equation for the light interaction:
+\begin{equation}
+  \cos(kx-\Delta \omega t)
+\end{equation}
+To represent the cosine accurately the product $kx$ must be small enough, i.e.
+many grid points in x-direction.
+
+
+\subsection{Interferometer sequence}
+\label{sub:interferometer_sequence}
+
+Below is an annotated example file for an interferometer sequence shown. 
+The sequence is in the Mach-Zehnder configuration.
+\inputminted{xml}{bragg_ad.xml} \noindent 
+Again all variables are given in dimensionless units. 
+In the following a few elements will be discussed in more detail.
+\begin{itemize}
+  \item \mintinline{xml}{<rabi_threshold>}: Rabi oscillation are computed
+    by Fourier transforming the wave function of the ground state. Let us assume
+    that the momentum state of zeroth order is at point $(0,0,0)$. 
+    The momentum state is spread. In order to calculate the number of particles
+    in the momentum state we define an interval between $(-a,0,0)$ 
+    and $(a,0,0)$ to take this width into account.
+    The bounds $a$ for this interval are given by \mintinline{xml}{rabi_threshold}.
+    At the moment the position of the momentum states are hard coded into the
+    program. Their positions are: $(0,0,0)$, $(-\hbar k,0,0)$ and $(\hbar k,0,0)$.
+    A change of momentum due to gravity for example is not considered. 
+  \item \mintinline{xml}{<Amp_1>}: At the moment different amplitudes 
+    are only supported for numerical diagonalisations.
+\end{itemize}
+There are a few flags one can use for sequence elements (also called sequence item):
+\begin{minted}{xml}
+  <bragg_ad dt="0.2" Nk="100" output_freq="last" pn_freq="last" 
+            rabi_output_freq="each">100</bragg_ad>
+\end{minted}
+The duration of an interferometer phase is encased in the 
+\mintinline{xml}{<bragg_ad>..</bragg_ad>} tags.
+Size of time steps is given by \mintinline{xml}{dt}. \mintinline{xml}{Nk} 
+is the number of iterations per output, meaning number of full kinetic steps 
+instead of half steps. The flag \mintinline{xml}{output_freq} defines the number of 
+files written. Possible options are:
+\begin{itemize}
+  \item \mintinline{xml}{none}: no file is written
+  \item \mintinline{xml}{last}: after the last time step the file is written once
+  \item \mintinline{xml}{each}: after \mintinline{xml}{Nk} time steps the data is written
+    to file.
+\end{itemize}
+The particle numbers of the internal states can be printed to terminal
+by the flag \mintinline{xml}{pn_freq}. The flag \mintinline{xml}{rabi_output_freq}
+computes the number of particles in each momentum state. If you choose the option
+\mintinline{xml}{rabi_output_freq="each"}, you get a file called xyz which contains
+the Rabi oscillation between momentum states.
+
+\subsection{Analyze files}
+\label{sub:analyze_files}
+Use the program \mintinline{bash}{ana_tool} to analyze wave functions.
+Below is an example file showing possible options and flags.
+The tool is written for Bragg beamsplitters but it should be easy to adapt
+this tool to Raman beamsplitters (use wavefunctions $\Psi_1$ and $\Psi_3$ instead of 
+just $\Psi_1$).
+\inputminted{xml}{tools.xml} \noindent 
+
+\section{Comparison of code and numerics}
+\label{sec:comparison_code_and_numerics}
+
+The diagonalised potential part for Bragg beamsplitters is given by equation (\ref{eq:num}). 
+In the following we discuss the implementation of this equation into our 
+simulator by means of an annotated source code for the potential part which is part
+of the file \mintinline{bash}{atus2/source/interferometry/src/bragg.cpp}.
+
+\begin{minted}[mathescape]{c++}
+template<class T, int dim>
+  void Bragg_single<T,dim>::Do_Bragg_ad()
+  {
+    #pragma omp parallel
+    {
+      // Get size of timesteps $\Delta t$
+      const double dt = this->Get_dt();
+      /* Current time + $0.5\Delta t$. See equation XYZ 
+      */
+      const double t1 = this->Get_t()+0.5*dt;
+
+      // Pointer to m_fields which contains the wavefunctions
+      // $\Psi_1$ is the groundstate and $\Psi_2$ the excited state
+      fftw_complex *Psi_1 = this->m_fields[0]->Getp2In();
+      fftw_complex *Psi_2 = this->m_fields[1]->Getp2In();
+
+      fftw_complex O11, O12, O21, O22, gamma_p, gamma_m, eta;
+      double re1, im1, tmp1, tmp2, V11, V22, Ep, Em, Omega;
+
+      // x coordinate
+      CPoint<dim> x;
+
+      // For temporal pulseshapes as specified in the xml-file
+      double F = this->Amplitude_at_time();
+
+      // Loop over all grid points
+      // In 2 or 3 dimension the x,y,z directions are given by
+      // 
+      #pragma omp for
+      for ( int l=0; l<this->m_no_of_pts; l++ )
+      {
+        // Get x position
+        x = this->m_fields[0]->Get_x(l);
+
+        // Precalculate $|\Psi|^2$ for later use. In Psi[l][0] the first index
+        // denotes the grid point and the second one the real ([0]) 
+        // or imaginary part ([1])
+        tmp1 = Psi_1[l][0]*Psi_1[l][0]+Psi_1[l][1]*Psi_1[l][1];
+        tmp2 = Psi_2[l][0]*Psi_2[l][0]+Psi_2[l][1]*Psi_2[l][1];
+
+        // Compute self interaction (nonlinear terms) and gravitational potential:
+        // $ V_{11} = g_{11}|\Psi_1|^2 + g_{12}|\Psi_2|^2 + mgx $ 
+        // $ V_{22} = g_{21}|\Psi_1|^2 + g_{22}|\Psi_2|^2 + \Delta_L + mgx $
+        V11 = this->m_gs[0]*tmp1+this->m_gs[1]*tmp2+beta[0]*x[0];
+        V22 = this->m_gs[2]*tmp1+this->m_gs[3]*tmp2-DeltaL[1]+beta[0]*x[0];
+
+        // Compute light field
+        // $ \Omega = F(t)E_0\cos(kx-(\Delta\omega+\nu t)t+\phi)$
+        // Here is $F(t)$ the temporal shape, $\nu$ is the chirp and $\phi$ is a 
+        // phase term.
+        Omega = F*Amp[0]*cos(laser_k[0]*x[0]-(laser_domh[0]+chirp*t1+chirp_rate[0]*t1)*
+        t1+phase[0]/2);
+
+        // Problem: If $\Omega = 0$ division by 0.
+        // Therefore compute case without light field ($\Omega=0$) separately.
+        // After that do loop for next l
+        if ( Omega == 0.0 )
+        {
+          // $\exp(-\Delta t \cdot V11)$
+          sincos( -dt*V11, &im1, &re1 );
+          tmp1 = Psi_1[l][0];
+          // Calculate $\Psi_1 \cdot \exp(-\Delta t \cdot V11)$. 
+          // This is a multiplication of two complex numbers so we get
+          Psi_1[l][0] = tmp1*re1-Psi_1[l][1]*im1;
+          Psi_1[l][1] = tmp1*im1+Psi_1[l][1]*re1;
+
+          sincos( -dt*V22, &im1, &re1 );
+          tmp1 = Psi_2[l][0];
+          Psi_2[l][0] = tmp1*re1-Psi_2[l][1]*im1;
+          Psi_2[l][1] = tmp1*im1+Psi_2[l][1]*re1;
+          continue;
+        }
+
+        // Calculate $ \eta = \exp(-0.5i(\Delta kx+\phi)) $
+        sincos( -0.5*(laser_dk[0]*x[0]), &im1, &re1 );
+        eta[0] = re1;
+        eta[1] = im1;
+
+        // Eigenvalues $E_+$ and $E_-$
+        tmp1 = sqrt((V11-V22)*(V11-V22)+4.0*Omega*Omega);
+        Ep = 0.5*(V11+V22+tmp1);
+        Em = 0.5*(V11+V22-tmp1);
+
+        // Normalize $\exp(-i(\Delta t \cdot E_p))$ and save as $\gamma_p$
+        sincos( -dt*Ep, &im1, &re1 );
+        tmp1 = 1.0/fabs((V11-Ep)*(V11-Ep)+Omega*Omega);
+        gamma_p[0] = tmp1*re1;
+        gamma_p[1] = tmp1*im1;
+
+        // Normalize $\exp(-i(\Delta t \cdot E_m))$ and save as $\gamma_m$
+        sincos( -dt*Em, &im1, &re1 );
+        tmp1 = 1.0/fabs((V11-Em)*(V11-Em)+Omega*Omega);
+        gamma_m[0] = tmp1*re1;
+        gamma_m[1] = tmp1*im1;
+
+        // Calculate $H_{11}$ (called O11) with the $\gamma$'s (see equation XYZ)
+        tmp1 = Omega*Omega;
+        O11[0] = tmp1*(gamma_p[0]+gamma_m[0]);
+        O11[1] = tmp1*(gamma_p[1]+gamma_m[1]);
+
+        tmp1 = V11-Ep;
+        tmp2 = V11-Em;
+
+        //$H_{22}$
+        O22[0] = tmp1*tmp1*gamma_p[0]+tmp2*tmp2*gamma_m[0];
+        O22[1] = tmp1*tmp1*gamma_p[1]+tmp2*tmp2*gamma_m[1];
+
+        //$H_{12}$ and $H_{21}$
+        O12[0] = -Omega*(tmp1*gamma_p[0]+tmp2*gamma_m[0]);
+        O12[1] = -Omega*(tmp1*gamma_p[1]+tmp2*gamma_m[1]);
+
+        O21[0] = O12[0];
+        O21[1] = O12[1];
+
+        tmp1 = O12[0];
+        O12[0] = eta[0]*tmp1-eta[1]*O12[1];
+        O12[1] = eta[1]*tmp1+eta[0]*O12[1];
+
+        tmp1 = O21[0];
+        O21[0] = eta[0]*tmp1+eta[1]*O21[1];
+        O21[1] = eta[0]*O21[1]-eta[1]*tmp1;
+
+        // Compute potential step with $H\cdot \Psi$ (matrix * vector)
+        gamma_p[0] = Psi_1[l][0];
+        gamma_p[1] = Psi_1[l][1];
+        gamma_m[0] = Psi_2[l][0];
+        gamma_m[1] = Psi_2[l][1];
+
+        Psi_1[l][0] = (O11[0]*gamma_p[0]-O11[1]*gamma_p[1]) + 
+                      (O12[0]*gamma_m[0]-O12[1]*gamma_m[1]);
+        Psi_1[l][1] = (O11[0]*gamma_p[1]+O11[1]*gamma_p[0]) + 
+                      (O12[0]*gamma_m[1]+O12[1]*gamma_m[0]);
+
+        Psi_2[l][0] = (O21[0]*gamma_p[0]-O21[1]*gamma_p[1]) + 
+                      (O22[0]*gamma_m[0]-O22[1]*gamma_m[1]);
+        Psi_2[l][1] = (O21[0]*gamma_p[1]+O21[1]*gamma_p[0]) + 
+                      (O22[0]*gamma_m[1]+O22[1]*gamma_m[0]);
+      }
+    }
+  }
+\end{minted}
+
+
+\section{Adding new sequence items}
+\label{sec:adding_new_sequences}
+If you want to add new sequence items, e.g. read in phase errors due to mirror
+imperfections, you can do this easily by adding your source code 
+to the run\_custom\_sequence function of
+\mintinline{bash}{atus2/source/interferometry/src/bragg.cpp}.
+An example will be added soon.
+
+
+\section{Appendix}
+%Further sequence flags:
+%\begin{itemize}
+%  \item \mintinline{xml}{no_of_chirps}
+%  \item \mintinline{xml}{chirp_mode}
+%\end{itemize}
+Besides Bragg beam splitters you can also choose to you use one of the
+two following beam splitter types:
+\begin{itemize}
+  \item \textbf{Double Bragg}:
+        For a double Bragg beam splitter we have to use three instead of two
+        wave functions. The wave functions are composed of a ground state and two
+        excited states. We invoke double Bragg beam splitters by the command
+        \mintinline{bash}{double_bragg}. Further information and details on the
+        numerics can be found in \cite{rosskamp_modellierung_2014} (in german).
+      \item \textbf{Raman}: 
+        For a Raman beam splitter we need again three wave functions, this time composed
+        of a ground, excited and a second ground state. An example xml-file can be
+        found in \mintinline{bash}{atus2/xml/raman/raman.xml}. 
+        For resonant transitions the following
+        equation for the detunings must hold:
+        \begin{equation}
+          \Delta_{L2}+\Delta_{L3}=\Delta \omega.
+        \end{equation}
+        Here $\Delta_{L2}$ is the detuning to the excited state with respect to the
+        ground state. $\Delta_{L3}$ is the detuning to the second ground state with
+        respect to the first ground state (see xml-file). \\
+        Raman beam splitters are implemented with a numerical diagonalisation of the 
+        potential part. The source code for this diagonalisation is part of the file 
+        \mintinline{bash}{atus2/include/CRT_Base_IF.h}. 
+
+\end{itemize}
+
+\bibliographystyle{plain}
+\bibliography{lit}
+\end{document}
+

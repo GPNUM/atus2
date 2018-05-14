@@ -1,0 +1,40 @@
+\ProvidesPackage{tikzstyle}
+\usepackage{tikz}
+\usetikzlibrary{shadows}
+\usetikzlibrary{decorations}
+\usetikzlibrary{shapes}
+\usetikzlibrary{calc}
+\usetikzlibrary{shadows,arrows}
+\usetikzlibrary{automata}
+\usetikzlibrary{positioning}
+\usetikzlibrary{trees}
+\usetikzlibrary{decorations.pathmorphing}
+\usetikzlibrary{decorations.markings}
+\usetikzlibrary{decorations.pathreplacing}
+
+\tikzstyle{materia}=[draw, fill=white, text width=6.0em, text centered, minimum height=1.5em,drop shadow]
+\tikzstyle{practica} = [materia, text width=6.8cm, minimum width=8cm,  minimum height=3em, drop shadow]
+\tikzstyle{texto} = [above, text width=6em, text centered]
+\tikzstyle{line} = [draw, thin, color=black, -latex']
+\tikzstyle{green_box} = [top color=white, bottom color=green!50, drop shadow,draw=black,line width=0.5 pt, minimum width=3cm, minimum height=0.5cm, rounded corners=5pt]
+\tikzstyle{red_box} = [top color=white, bottom color=red!70, drop shadow,draw=black,line width=0.5 pt, minimum width=3cm, minimum height=0.5cm, rounded corners=5pt]
+\tikzstyle{blue_box} = [top color=white, bottom color=blue!70, drop shadow,draw=black,line width=0.5 pt, minimum width=2cm, minimum height=0.5cm, rounded corners=5pt]
+\tikzstyle{yellow_box} = [top color=white, bottom color=yellow!70, drop shadow,draw=black,line width=0.5 pt, minimum width=7cm, minimum height=4.5cm]
+\tikzstyle{line}=[-latex,draw=black,line width=1.0]
+\tikzstyle{line3}=[-latex,draw=gray,line width=1.0]
+\tikzstyle{line2}=[-,draw=black,line width=1.0]
+\tikzstyle{line4}=[-latex,draw=black,line width=.5]
+
+\tikzset{
+    photon/.style={decorate, decoration={snake}, draw=blue},
+    electron/.style={draw=blue, postaction={decorate},decoration={markings,mark=at position .55 with {\arrow[draw=blue]{>}}}},
+    gluon/.style={decorate, draw=magenta,decoration={coil,amplitude=4pt, segment length=5pt}},
+    %triangle/.style = { regular polygon, regular polygon sides=3},
+    cross/.style={cross out, draw=black, minimum size=2*(#1-\pgflinewidth), inner sep=0pt, outer sep=0pt},
+    cross/.default={1pt}
+}
+
+\DeclareRobustCommand\circle  {\tikz[baseline=-0.6ex]\draw[red] (0,0) circle (3pt);}
+\DeclareRobustCommand\plus {\tikz[baseline=-0.6ex]\draw (0,0) node[cross=3pt,rotate=45,green]{};}
+\DeclareRobustCommand\triUp {\tikz[baseline=-0.6ex]\draw (0,0) node[draw, fill=none, regular polygon, regular polygon sides=3,inner sep=1.5pt]{};}
+\DeclareRobustCommand\triDown {\tikz[baseline=-0.6ex]\draw (0,0.05) node[draw, fill=none, regular polygon, regular polygon sides=3,inner sep=1.5pt,rotate=180,blue]{};}

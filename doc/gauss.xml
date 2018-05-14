@@ -1,0 +1,24 @@
+<SIMULATION>
+  <DIM>1</DIM>    <!--Dimension -->
+  <FILENAME>0.0000_1.bin</FILENAME>  <!--Name of output file -->
+  <!--Use a 1/2/3-dimensional Gaussian with width sigma as an initial state -->
+  <GUESS_1D>exp( -0.5*(x/sigma_x)^2 )</GUESS_1D>
+  <GUESS_2D>exp( -0.5*( (x/sigma_x)^2 + (y/sigma_y)^2 ) )</GUESS_2D>
+  <GUESS_3D>exp( -0.5*( (x/sigma_x)^2 + (y/sigma_y)^2 + (z/sigma_z)^2 ) )</GUESS_3D>
+  <CONSTANTS>
+    <N>1</N> <!--Number of particles contained in wave package -->
+    <!--Variables used in <GUESS> -->
+    <sigma_x>1</sigma_x>
+    <sigma_y>1</sigma_y>
+    <sigma_z>1</sigma_z>
+  </CONSTANTS>
+  <ALGORITHM>
+    <NX>16384</NX> <!--Number of grid points in x-direction -->
+    <NY>256</NY>
+    <NZ>256</NZ>
+    <!--Box size in x-direction in dimensionless units-->
+    <XMIN>-100</XMIN><XMAX>100</XMAX> 
+    <YMIN>-10</YMIN><YMAX>10</YMAX> 
+    <ZMIN>-10</ZMIN><ZMAX>10</ZMAX>
+  </ALGORITHM>
+</SIMULATION>

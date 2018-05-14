@@ -1,0 +1,35 @@
+<SIMULATION>
+  <DIM>1</DIM>
+  <!-- Random File for header information -->
+  <FILENAME>100.000_1.bin</FILENAME>
+  <CONSTANTS>
+    <rabi_threshold>3</rabi_threshold>
+  </CONSTANTS>
+  <VCONSTANTS>
+    <!-- Define momentum states -->
+    <momentum_state_1>0,0,0</momentum_state_1>
+    <momentum_state_2>16,0,0</momentum_state_2>
+  </VCONSTANTS>
+  <ANALYZE>
+    <!-- Calculate expectation value of momentum. If separate is true
+         the expectation value of the momentum states is calculated separately.
+         If separate is false the total expectation value of the wave function
+         is calculated (i.e. integrated over all the momentum states). The
+         value <expval_momentum>false</expval_momentum> means this routine 
+         is not invoked. --> 
+    <expval_momentum separate="false">false</expval_momentum>
+    <expval_momentum separate="true">true</expval_momentum>
+    <!-- Calculate expectation value of position -->
+    <expval_position separate="false">false</expval_position>
+    <expval_position separate="true">true</expval_position>
+    <!-- Calculate particle number -->
+    <particle_number separate="true">true</particle_number>
+    <particle_number>false</particle_number>
+    <!-- Output momentum states in real space separately -->
+    <mom_states_pos>true</mom_states_pos>
+    <!-- Output momentum states in fourier space separately -->
+    <mom_states>true</mom_states>
+  </ANALYZE>
+  <AI_SEQUENCE>
+  </AI_SEQUENCE>
+</SIMULATION>
