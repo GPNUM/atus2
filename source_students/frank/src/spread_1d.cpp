@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     dn = atoi(argv[2]);
   }
 
-  fout << "# x mean variance sigma" << endl;
+  fout << "# x mean variance sigma N" << endl;
   for (int j = 1; j <= N; j++) {
     sprintf(foo, "%i.000_1.bin", j*dn);
     cout << foo << endl;
@@ -90,11 +90,10 @@ int main(int argc, char *argv[])
     sum += val;
     mean += header.xMax*val;
     variance += header.xMax*val;
-    sum /= 10000.0;
-    mean /= 10000.0;
-    variance /= 10000.0;
+    mean /= sum;
+    variance /= sum;
 
-    fout << j*dn << "\t" << mean << "\t" << variance << "\t" << sqrt(abs(variance)) << endl;
+    fout << j*dn << "\t" << mean << "\t" << variance << "\t" << sqrt(abs(variance)) << "\t" << sum << endl;
   }
   cout << "stat.txt written." << endl;
 }
