@@ -259,10 +259,19 @@ namespace RT_Solver
 
   CRT_Propagation_1D::CRT_Propagation_1D( ParameterHandler* p ) : CRT_Base_IF( p )
   {
-    no_noise_run = (fabs(m_params->Get_Constant("Noise_Amplitude")) < 1e-8);
+    try {
+      m_max_noise = m_params->Get_Constant("Noise_Amplitude");
+    } catch (std::string) {
+      m_max_noise = 0.0;
+    }
+    no_noise_run = (fabs(m_max_noise) < 1e-8);
     if (no_noise_run) {
       cout << "No Noise Run" << endl;
     }
+    else {
+      cout << "Max Noise: " << m_max_noise << endl;
+    }
+
     m_oftotal.open("total.txt");
     dt = m_params->m_sequence.front().dt;
     for (auto seq_item : m_params->m_sequence) {
@@ -278,9 +287,6 @@ namespace RT_Solver
       noiseft = new Fourier::rft_1d(m_header);
       noise_data = new Noise_Data(m_params->Get_simulation("NOISE"), no_of_chunks, noise_expansion);
     }
-
-    m_max_noise = m_params->Get_Constant("Noise_Amplitude");
-    cout << "Max Noise: " << m_max_noise << endl;
 
     m_map_stepfcts["bragg_ad"] = &Do_Bragg_ad_Wrapper;
     m_map_stepfcts["half_step"] = &Do_Noise_Step_half_Wrapper;
