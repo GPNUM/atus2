@@ -11,13 +11,13 @@ The solvers are based on C++ template classes which are located in the include f
 
 The code utilizes OpenMP and MPI for parallel computing.
 
-## **Requirements and Dependencies**  
+## **Requirements and Dependencies**
 
 * make, cmake
 * gcc, g++, gfortran
 * Modules (recommended)
 * doxygen (optional)
-* Steel Bank Common Lisp (recommended for install script)
+* Steel Bank Common Lisp (recommended for install and generate-xml script)
 * gnuplot
 * Paraview (optional)
 
@@ -45,6 +45,8 @@ It is highly recommended to use our install script which downloads all required 
 Further we recommended the use of environmental modules (http://modules.sourceforge.net/) for setting up all paths. Modules should be available via your Linux distribution. The install script also generates module files which are located in $HOME/local/modules. The search paths for the module files needs to be extended by adding your path to $MODULEPATH of your shell.
 
 The binaries are installed in $HOME/bin. Make sure that this folder is added to $PATH of your shell.
+
+The generate-xml.lisp script can be used to generate xml configuration files. It will automatically nondimensionalize the given parameters.
 
 ## **Example 1 - double slit experiment**
 Change to the sub folder xml/double_slit.

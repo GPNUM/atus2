@@ -3,7 +3,7 @@
 (setf *read-default-float-format* 'double-float)
 
 (defun safe-read ()
-  "Somewhat hardened against read-macros"
+  "Somewhat hardened against malicious read-macros"
   (with-standard-io-syntax
     (let* ((*read-eval* nil))
       (read))))
@@ -18,6 +18,9 @@
        (when (numberp entry)
          (return entry))
        (format t "~&Not a valid number: ~a" entry))))
+
+(defparameter seq-list (list "free propagation"
+                             "interferometer"))
 
 (let ((xml-form "<SIMULATION>
   <DIM>~d</DIM>
@@ -46,16 +49,24 @@
     <NK>25</NK>
     <NA>700</NA>
   </ALGORITHM>
-  <SEQUENCE>
+  ~-[<SEQUENCE>
     <bragg_ad dt=\"0.2\" Nk=\"100\" output_freq=\"last\" pn_freq=\"last\" rabi_output_freq=\"each\">100</bragg_ad>
     <freeprop dt=\"0.2\" Nk=\"10\" output_freq=\"last\" pn_freq=\"last\">1000</freeprop>
-  </SEQUENCE>
+  </SEQUENCE>~;<SEQUENCE>
+    <set_momentum comp=\"0\">0.1,0,0</set_momentum>
+    <bragg_ad dt=\"0.1\" Nk=\"100\" output_freq=\"last\" pn_freq=\"last\" rabi_output_freq=\"each\" >100</bragg_ad>
+    <freeprop dt=\"0.1\" Nk=\"10\" output_freq=\"last\" pn_freq=\"last\">7000</freeprop>
+    <bragg_ad dt=\"0.1\" Nk=\"100\" output_freq=\"last\" pn_freq=\"last\" rabi_output_freq=\"last\" >200</bragg_ad>
+    <freeprop dt=\"0.1\" Nk=\"10\" output_freq=\"last\" pn_freq=\"last\">7000</freeprop>
+    <bragg_ad dt=\"0.1\" Nk=\"100\" output_freq=\"last\" pn_freq=\"last\" rabi_output_freq=\"each\" phase_scan=\"20\">100</bragg_ad>
+  </SEQUENCE>~]
 </SIMULATION>
 "))
 
-  (defun write-xml (filename dimension alpha alpha2 beta beta2 gs)
+
+  (defun write-xml (filename dimension alpha alpha2 beta beta2 gs sequence)
     (with-open-file (out filename :direction :output :if-exists :supersede :if-does-not-exist :create)
-      (format out xml-form dimension (car alpha) (cdr alpha) (car alpha2) (cdr alpha2) (nth 0 gs) (nth 1 gs) (nth 2 gs) (nth 3 gs) (car beta) (cdr beta) (car beta2) (cdr beta2))
+      (format out xml-form dimension (car alpha) (cdr alpha) (car alpha2) (cdr alpha2) (nth 0 gs) (nth 1 gs) (nth 2 gs) (nth 3 gs) (car beta) (cdr beta) (car beta2) (cdr beta2) sequence)
       (format t "~&~a written.~%" filename))))
 
 
@@ -73,7 +84,8 @@
         (alpha2)
         (beta) ; Gravity
         (beta2)
-        (gs)) ; Non-linearity
+        (gs) ; Non-linearity
+        (sequence))
 
     ;; local functions
     (flet ((calculate-alpha (mass)
@@ -86,7 +98,8 @@
                 mass1
                 mass2
                 (expt length dimension)))
-           (print-settings ()
+           (print-settings (dim)
+             (format t "~&~%Settings along dimension: ~a" (nth dim (list "x" "y" "z")))
              (format t "
 Current Setting:
   Length scale (in m): ~a
@@ -104,6 +117,8 @@ q - abort~%" length time gravity two-species-p mass1 mass2 two-species-p)))
 
       ;; Start
       (setf two-species-p (yes-or-no-p "Two species?"))
+
+      ;; Set number of dimensions
       (loop
          (format t "Number of dimensions? (1-3) ")
          (finish-output)
@@ -113,10 +128,10 @@ q - abort~%" length time gravity two-species-p mass1 mass2 two-species-p)))
            (return))
          (format t "~&Dimension not supported: ~a~%" dimension))
 
+      ;; Set configuration per dimension
       (loop :for dim :from 0 :below dimension
          :do
-           (format t "~&~%Settings along dimension: ~a" (nth dim (list "x" "y" "z")))
-           (print-settings)
+           (print-settings dim)
            (format t "> ")
            (finish-output)
            (loop :for c = (read-line)
@@ -140,7 +155,7 @@ q - abort~%" length time gravity two-species-p mass1 mass2 two-species-p)))
                        (setf mass2 (ask-for-number "Mass2 (in atomic mass units, u): "))
                        (format t "~&Mass2 updated.~%"))
                       ((string= c "p")
-                       (print-settings))
+                       (print-settings dim))
                       ((string= c "q")
                        (format t "~&Quit.~%")
                        (quit))
@@ -148,21 +163,33 @@ q - abort~%" length time gravity two-species-p mass1 mass2 two-species-p)))
                 (format t "> ")
                 (finish-output))
            (setf alpha (cons (calculate-alpha mass1) alpha))
-           (setf alpha2 (cons (calculate-alpha mass2) alpha2))
            (setf beta (cons (calculate-beta mass1) beta))
-           (setf beta2 (cons (calculate-beta mass2) beta2)))
+           (when two-species-p
+             (setf alpha2 (cons (calculate-alpha mass2) alpha2))
+             (setf beta2 (cons (calculate-beta mass2) beta2))))
 
-      (if (yes-or-no-p "Calculate nonlinearity?")
-          (progn
-            (setf gs (cons (calculate-gs mass1 mass1 (ask-for-number "a_11: ")) gs))
-            (setf gs (cons (calculate-gs mass1 mass2 (ask-for-number "a_12: ")) gs))
-            (setf gs (cons (calculate-gs mass2 mass1 (ask-for-number "a_21: ")) gs))
-            (setf gs (cons (calculate-gs mass2 mass2 (ask-for-number "a_22: ")) gs)))
-          (setf gs (list 0.0 0.0 0.0 0.0))))
-    (unless two-species-p
-      (setf alpha2 nil)
-      (setf beta2 nil))
-    (setf gs (reverse gs)) ;; Correct ordering
-    (write-xml "output.xml" dimension alpha alpha2 beta beta2 gs)))
+      ;; Set nonlinearity
+      (setf gs (if (yes-or-no-p "Calculate nonlinearity?")
+                   (list (calculate-gs mass1 mass1 (ask-for-number "a_11: "))
+                         (calculate-gs mass1 mass2 (ask-for-number "a_12: "))
+                         (calculate-gs mass2 mass1 (ask-for-number "a_21: "))
+                         (calculate-gs mass2 mass2 (ask-for-number "a_22: ")))
+                   (list 0.0 0.0 0.0 0.0)))
 
+      ;; Set sequence
+      (format t "~&Select Sequence:~%~{~a - ~a~%~}> "
+              (loop :for seq :in seq-list
+                 :for i :from 0
+                 :append (list i seq)))
+      (finish-output)
+      (setf sequence (loop :for c = (parse-integer (read-line) :junk-allowed t)
+                        :do
+                          (if (and (numberp c) (>= c 0) (< c (length seq-list)))
+                              (return c)
+                              (progn (format t "~&Not valid: ~a Try again.~%> " c)
+                                     (finish-output)))))
+
+      (write-xml "output.xml" dimension alpha alpha2 beta beta2 gs sequence))))
+
+;; Call program
 (generate-xml)
