@@ -1,0 +1,36 @@
+<SIMULATION>
+  <DIM>1</DIM>
+  <FILENAME>0.0000_1.bin</FILENAME>
+  <FILENAME_2>0.0000_2.bin</FILENAME_2>
+  <CONSTANTS>
+    <Beta>-0.00134248</Beta>
+    <laser_k>8.05289</laser_k>
+    <laser_k_2>8.05289</laser_k_2>
+    <laser_domh>0.0471239</laser_domh>
+    <laser_domh_2>0.0471239</laser_domh_2>
+    <laser_dk>0</laser_dk>
+    <rabi_threshold>4</rabi_threshold>
+    <chirp>0</chirp>
+  </CONSTANTS>
+  <VCONSTANTS>
+    <Amp_1>-14.0496,-14.0496</Amp_1>
+    <Amp_2>-14.0496,-14.0496</Amp_2>
+    <Alpha_1>3.649874e-4</Alpha_1>
+    <Delta_L>0,-6283.19</Delta_L>
+    <GS_1>0.000000e+0,0.000000e+0</GS_1>
+    <GS_2>0.000000e+0,0.000000e+0</GS_2>
+    <Beta>0.000000e+0</Beta>
+  </VCONSTANTS>
+  <ALGORITHM>
+    <NK>25</NK>
+    <NA>700</NA>
+  </ALGORITHM>
+  <SEQUENCE>
+    <set_momentum comp="0">0.1,0,0</set_momentum>
+    <bragg_ad dt="0.1" Nk="100" output_freq="last" pn_freq="last" rabi_output_freq="each" >100</bragg_ad>
+    <freeprop dt="0.1" Nk="10" output_freq="last" pn_freq="last">7000</freeprop>
+    <bragg_ad dt="0.1" Nk="100" output_freq="last" pn_freq="last" rabi_output_freq="last" >200</bragg_ad>
+    <freeprop dt="0.1" Nk="10" output_freq="last" pn_freq="last">7000</freeprop>
+    <bragg_ad dt="0.1" Nk="100" output_freq="last" pn_freq="last" rabi_output_freq="each" phase_scan="20">100</bragg_ad>
+  </SEQUENCE>
+</SIMULATION>

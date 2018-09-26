@@ -50,10 +50,8 @@
     <NA>700</NA>
   </ALGORITHM>
   ~-[<SEQUENCE>
-    <bragg_ad dt=\"0.2\" Nk=\"100\" output_freq=\"last\" pn_freq=\"last\" rabi_output_freq=\"each\">100</bragg_ad>
     <freeprop dt=\"0.2\" Nk=\"10\" output_freq=\"last\" pn_freq=\"last\">1000</freeprop>
   </SEQUENCE>~;<SEQUENCE>
-    <set_momentum comp=\"0\">0.1,0,0</set_momentum>
     <bragg_ad dt=\"0.1\" Nk=\"100\" output_freq=\"last\" pn_freq=\"last\" rabi_output_freq=\"each\" >100</bragg_ad>
     <freeprop dt=\"0.1\" Nk=\"10\" output_freq=\"last\" pn_freq=\"last\">7000</freeprop>
     <bragg_ad dt=\"0.1\" Nk=\"100\" output_freq=\"last\" pn_freq=\"last\" rabi_output_freq=\"last\" >200</bragg_ad>
@@ -80,8 +78,8 @@
         (gravity 0)
         (mass1 87) ; Mass of species 1
         (mass2 85) ; Mass of species 2
-        (alpha) ; Hamilton factor
-        (alpha2)
+        (alpha) ; Kinetic factor in Hamiltonian
+        (alpha2) ; Kinetic factor in Hamiltonian for second species
         (beta) ; Gravity
         (beta2)
         (gs) ; Non-linearity
